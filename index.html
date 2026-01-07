@@ -262,41 +262,46 @@
         </div>
     </div>
 
-<!-- 1. ADD THE FUNCTION HERE (Outside the module) -->
-<script>
-    const getKey = (name) => {
-        // We will set window.configKeys via a simple script injection in the next step
-        if (window.configKeys && window.configKeys[name]) return window.configKeys[name];
-        
-        // FALLBACK FOR DEVELOPMENT ONLY
-        if (location.hostname === '127.0.0.1' || location.hostname === 'localhost') {
-            if (name === 'DEEPSEEK_KEY') return "sk-65073065982c418fbfa10defad9360c1";
-            if (name === 'POLYGON_KEY') return "GtMaFCu2dUPCUXO2klhv4EjpthvlitMX";
+    <!-- 2. MAIN MODULE STARTS HERE -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-analytics.js";
+        import { getAuth, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
+
+        // --- FETCH CONFIG FROM NETLIFY FUNCTION ---
+        let DEEPSEEK_KEY = "";
+        let POLYGON_KEY = "";
+
+        async function fetchConfig() {
+            try {
+                const res = await fetch('/.netlify/functions/get-config');
+                if(!res.ok) throw new Error("Failed to fetch config");
+                const data = await res.json();
+                DEEPSEEK_KEY = data.DEEPSEEK_KEY;
+                POLYGON_KEY = data.POLYGON_KEY;
+                return true;
+            } catch (e) {
+                console.error("Config Error:", e);
+                alert("Error loading configuration. Make sure you deployed the 'netlify/functions' folder.");
+                return false;
+            }
         }
-        return null;
-    };
-</script>
 
-<!-- 2. YOUR ORIGINAL MODULE STARTS HERE -->
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-analytics.js";
-    import { getAuth, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
+        // --- APP INITIALIZATION ---
+        // We wait for config before initializing anything else
+        const hasConfig = await fetchConfig();
+        if (!hasConfig) return; // Stop if keys failed to load
 
-    // --- CONFIGURATION ---
-    const DEEPSEEK_KEY = getKey('DEEPSEEK_KEY');
-    const POLYGON_KEY = getKey('POLYGON_KEY');
-    
-    // Firebase Config
-    const firebaseConfig = {
-        apiKey: "AIzaSyAaIpgze1gQ-vd3TI4fP5XWJlbzqzO-PXY",
-        authDomain: "siskoai.firebaseapp.com",
-        projectId: "siskoai",
-        storageBucket: "siskoai.firebasestorage.app",
-        messagingSenderId: "116282806208",
-        appId: "1:116282806208:web:fb11971fefe93d2f898225",
-        measurementId: "G-H8WGZ7P4HC"
-    };
+        // Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyAaIpgze1gQ-vd3TI4fP5XWJlbzqzO-PXY",
+            authDomain: "siskoai.firebaseapp.com",
+            projectId: "siskoai",
+            storageBucket: "siskoai.firebasestorage.app",
+            messagingSenderId: "116282806208",
+            appId: "1:116282806208:web:fb11971fefe93d2f898225",
+            measurementId: "G-H8WGZ7P4HC"
+        };
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
