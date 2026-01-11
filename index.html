@@ -3,77 +3,132 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sisko StockSense | Intelligent Screener</title>
+    <title>Sisko StockSense | Liquid Glass UI</title>
     
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
     
     <style>
-        /* --- Apple Liquid Theme Variables --- */
+        /* --- THEME VARIABLES --- */
         :root {
-            --up: #34C759;   /* Apple Greenish */
-            --down: #FF3B30; /* Apple Red */
-            --bg-dark: #000000;
-            --glass-bg: rgba(20, 20, 20, 0.6);
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --text: #F5F5F7;
-            --text-muted: #8E8E93;
-            --accent: #0A84FF; /* iOS Blue */
+            /* Default Dark Mode */
+            --bg-color: #0f1115;
+            --bg-gradient: radial-gradient(circle at 10% 20%, #1a1a2e 0%, #000000 90%);
+            
+            /* Glass Dark Mode */
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-shadow: 0 8px 32px 0 rgba(0,0,0,0.3);
+            
+            --text-main: #ffffff;
+            --text-muted: #94a3b8;
+            --accent: #2962FF;
+            --up: #00C853;
+            --down: #FF3D00;
+            
+            /* Modal Glass */
+            --modal-overlay: rgba(0,0,0,0.8);
+        }
+
+        /* Light Mode Override */
+        body.light-mode {
+            --bg-color: #f0f2f5;
+            /* Apple Liquid Mesh Gradient */
+            --bg-gradient: radial-gradient(circle at 0% 0%, #ffe259 0%, #ffa751 100%); 
+            
+            /* Glass Light Mode - Frosted White */
+            --glass-bg: rgba(255, 255, 255, 0.55);
+            --glass-border: rgba(255, 255, 255, 0.7);
+            --glass-shadow: 0 8px 32px 0 rgba(0,0,0,0.08);
+            
+            --text-main: #1d1d1f;
+            --text-muted: #5c6370;
+            --accent: #007aff;
+            
+            /* Modal Glass */
+            --modal-overlay: rgba(255,255,255,0.3);
         }
 
         * { box-sizing: border-box; tap-highlight-color: transparent; }
         
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            /* Abstract liquid background */
-            background: radial-gradient(circle at 10% 20%, rgb(20, 20, 25) 0%, rgb(10, 10, 15) 90%);
-            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-color);
+            background-image: var(--bg-gradient);
+            color: var(--text-main);
             margin: 0;
             padding: 0;
             height: 100vh;
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            transition: background 0.5s ease;
         }
 
-        /* --- Utilities --- */
+        /* --- LIQUID GLASS UTILITIES --- */
         .glass {
             background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+            backdrop-filter: blur(16px) saturate(180%);
+            -webkit-backdrop-filter: blur(16px) saturate(180%);
             border: 1px solid var(--glass-border);
+            box-shadow: var(--glass-shadow);
+        }
+        
+        .glass-panel {
             border-radius: 20px;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            transition: all 0.3s ease;
         }
 
+        /* --- Components --- */
         .flex { display: flex; }
         .flex-col { flex-direction: column; }
         .items-center { align-items: center; }
         .justify-between { justify-content: space-between; }
         .w-full { width: 100%; }
-        .text-up { color: var(--up); }
-        .text-down { color: var(--down); }
         .hidden { display: none !important; }
         
-        /* --- Buttons --- */
         .btn { 
-            cursor: pointer; border: none; outline: none; 
-            transition: all 0.2s ease;
-            font-family: inherit;
+            cursor: pointer; border: none; outline: none; transition: all 0.2s;
+            font-weight: 600;
+            border-radius: 10px;
         }
-        .btn:hover { opacity: 0.8; transform: scale(0.98); }
-        .btn-primary { background: var(--accent); color: white; padding: 10px 20px; border-radius: 12px; font-weight: 500; letter-spacing: 0.5px; }
-        .btn-danger { background: var(--down); color: white; padding: 10px 20px; border-radius: 12px; }
-        .btn-icon { background: transparent; color: var(--text-muted); padding: 8px; font-size: 1.2rem; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .btn:active { transform: translateY(0); }
+        
+        .btn-primary { 
+            background: var(--accent); color: white; padding: 10px 20px;
+            box-shadow: 0 4px 15px rgba(41, 98, 255, 0.3);
+        }
+        .btn-danger { background: var(--down); color: white; padding: 10px 20px; }
+        .btn-icon { 
+            background: rgba(255,255,255,0.1); 
+            padding: 10px; border-radius: 50%; width: 40px; height: 40px;
+            color: var(--text-main);
+        }
+        .btn-icon:hover { background: rgba(255,255,255,0.2); }
+
+        /* --- Theme Toggle --- */
+        .theme-toggle {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            padding: 5px;
+            border-radius: 20px;
+            cursor: pointer;
+            color: var(--text-main);
+            font-size: 1.2rem;
+            transition: transform 0.3s;
+        }
+        .theme-toggle:hover { transform: rotate(15deg) scale(1.1); }
 
         /* --- Auth View --- */
         #auth-view {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8); /* Darker blur backdrop */
+            background: var(--modal-overlay);
             backdrop-filter: blur(30px);
             -webkit-backdrop-filter: blur(30px);
             z-index: 100;
@@ -81,185 +136,181 @@
             padding: 20px;
         }
         .auth-card {
-            padding: 40px; 
-            width: 100%; max-width: 360px; 
-            text-align: center;
+            padding: 40px; width: 100%; max-width: 400px; text-align: center;
         }
         .auth-input {
-            width: 100%; padding: 16px 20px; margin: 20px 0;
-            background: rgba(255, 255, 255, 0.1); 
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white; border-radius: 12px;
+            width: 100%; padding: 14px 20px; margin: 20px 0;
+            background: rgba(255,255,255,0.05); 
+            border: 1px solid var(--glass-border);
+            color: var(--text-main); border-radius: 12px;
             outline: none;
             font-size: 1rem;
         }
-        .auth-input:focus { border-color: var(--accent); }
+        .auth-input:focus { border-color: var(--accent); background: rgba(255,255,255,0.1); }
         .auth-switch {
             margin-top: 20px; font-size: 0.9rem; color: var(--accent);
-            cursor: pointer; text-decoration: underline;
+            cursor: pointer; text-decoration: underline; opacity: 0.8;
         }
 
-        /* --- Header & Search --- */
+        /* --- Header --- */
         header {
-            padding: 15px 20px;
+            padding: 15px 25px;
             display: flex; align-items: center; justify-content: space-between;
             position: sticky; top: 0; z-index: 10;
-            background: rgba(20,20,23,0.85); /* Semi-transparent dark */
+            /* Top Glass Strip */
+            background: var(--glass-bg);
             backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border-bottom: 1px solid var(--glass-border);
         }
-        .logo { font-weight: 700; font-size: 1.3rem; letter-spacing: -0.5px; }
+        .logo { font-weight: 800; font-size: 1.3rem; letter-spacing: -0.5px; background: linear-gradient(45deg, var(--text-main), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         
         .search-container {
             flex: 1;
-            max-width: 400px;
+            max-width: 500px;
             position: relative;
             margin: 0 20px;
         }
         
         .search-input {
             width: 100%;
-            padding: 10px 15px 10px 40px;
-            background: rgba(0,0,0,0.3);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 12px;
-            color: white;
+            padding: 12px 45px 12px 15px;
+            background: rgba(255,255,255,0.05); 
+            border: 1px solid var(--glass-border);
+            border-radius: 50px;
+            color: var(--text-main);
             outline: none;
             transition: 0.3s;
         }
         .search-input:focus {
-            background: rgba(0,0,0,0.6);
+            background: rgba(255,255,255,0.1);
             border-color: var(--accent);
+            box-shadow: 0 0 15px rgba(41, 98, 255, 0.2);
         }
 
         /* --- Tabs --- */
         .tabs {
-            display: flex; overflow-x: auto; 
-            padding: 10px 20px; 
-            background: rgba(20,20,23,0.6);
-            border-bottom: 1px solid var(--glass-border);
+            display: flex; overflow-x: auto; padding: 0 25px;
         }
         .tab {
-            padding: 12px 20px; color: var(--text-muted); white-space: nowrap;
+            padding: 14px 24px; color: var(--text-muted); white-space: nowrap;
             font-size: 0.95rem; cursor: pointer; border-bottom: 2px solid transparent;
             font-weight: 500;
+            transition: 0.3s;
         }
-        .tab.active { color: white; border-bottom-color: white; }
+        .tab.active { color: var(--text-main); border-bottom-color: var(--accent); }
 
-        main { flex: 1; overflow-y: auto; position: relative; padding: 20px; }
+        main { flex: 1; overflow-y: auto; position: relative; padding-bottom: 80px; }
 
         /* --- Screener Table --- */
         .stock-row {
-            display: grid; grid-template-columns:1.5fr 1fr 1fr 0.5fr;
-            padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.05);
+            display: grid; grid-template-columns: 1.5fr 1fr 1fr 0.5fr;
+            padding: 16px 20px; border-bottom: 1px solid var(--glass-border);
             align-items: center; cursor: pointer; transition: background 0.2s;
         }
-        .stock-row:hover { background: rgba(255,255,255,0.03); }
-        .symbol { font-weight: 600; font-size: 1.1rem; }
-        .price { font-family: monospace; font-size: 1.1rem; }
-        .change { font-family: monospace; font-size: 1rem; text-align: right; }
-        .actions { text-align: right; color: var(--text-muted); }
+        .stock-row:hover { background: rgba(255,255,255,0.05); }
+        .symbol { font-weight: 700; font-size: 1.1rem; }
+        .price { font-family: monospace; font-size: 1.05rem; }
+        .change { font-family: monospace; font-size: 1rem; text-align: right; font-weight: 600; }
+        .actions { text-align: right; }
 
-        /* --- Stock Detail Modal --- */
-        #modal {
+        /* --- Modals --- */
+        #modal, #create-watchlist-modal, #add-stock-modal {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8);
-            backdrop-filter: blur(30px);
-            -webkit-backdrop-filter: blur(30px);
-            z-index: 50; overflow-y: auto;
-            transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+            background: var(--modal-overlay);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            z-index: 50;
+            display: flex; align-items: center; justify-content: center;
+            transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            opacity: 0; pointer-events: none;
         }
-        #modal.open { transform: translateY(0); }
+        #modal.open, #create-watchlist-modal.open, #add-stock-modal.open { transform: translateY(0); opacity: 1; pointer-events: auto; }
         
         .modal-content {
-            max-width: 500px; margin: 30px auto;
+            width: 90%; max-width: 550px;
             overflow: hidden;
             border-radius: 24px;
-            border: 1px solid rgba(255,255,255,0.15);
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            /* Stronger glass for main content */
+            background: var(--glass-bg);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+            padding: 25px;
         }
 
         .modal-header {
-            padding: 20px; 
             display: flex; justify-content: space-between; align-items: center;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 20px;
         }
-        .modal-price { font-size: 2.5rem; font-weight: 700; font-family: monospace; padding: 20px; text-align: center; }
+        .modal-price { font-size: 2.5rem; font-weight: 800; font-family: monospace; text-align: center; margin-bottom: 20px; letter-spacing: -1px; }
+        .modal-price.light-mode { color: #000; }
+        .modal-price.dark-mode { color: #fff; text-shadow: 0 0 10px rgba(255,255,255,0.2); }
 
-        .chart-container { height: 350px; width: 100%; padding: 0 20px 20px 20px; }
+        .chart-container { height: 350px; width: 100%; position: relative; margin-bottom: 30px; }
 
-        .ai-section { padding: 30px; margin-top: 10px; }
-        .ai-header { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; color: var(--accent); }
+        .ai-section { padding: 0; margin-top: 10px; border-top: 1px solid var(--glass-border); padding-top: 25px; }
+        .ai-header { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; color: var(--accent); font-size: 1.1rem; font-weight: 700; }
         
         .thinking-box {
-            background: rgba(0,0,0,0.3); border-left: 3px solid var(--accent);
-            padding: 20px; margin-bottom: 20px; font-size: 0.9rem; color: var(--text-muted);
-            border-radius: 0 12px 12px 0;
+            background: rgba(0,0,0,0.2); border-left: 3px solid var(--accent);
+            padding: 20px; margin-bottom: 25px; font-size: 0.95rem; color: var(--text-muted);
+            border-radius: 0 8px 8px 0;
         }
-        .thinking-title { font-size: 0.75rem; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 1px; }
-
-        .final-analysis { font-size: 1.05rem; line-height: 1.6; }
+        .thinking-title { font-size: 0.75rem; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 1px; font-weight: 700; }
 
         /* --- Footer & Ads --- */
         footer {
-            padding: 20px; text-align: center; font-size: 0.85rem; color: var(--text-muted);
+            padding: 25px; text-align: center; font-size: 0.9rem; color: var(--text-muted);
             display: flex; flex-direction: column; gap: 15px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border-top: 1px solid var(--glass-border);
-            background: rgba(20,20,23,0.6);
         }
-        footer a { color: var(--accent); text-decoration: none; font-weight: 500; }
-
         .ad-banner {
-            background: linear-gradient(90deg, #FF0055, #FF00CC);
+            background: linear-gradient(135deg, #FF0055, #FF00CC);
             color: white;
             text-align: center;
-            padding: 12px;
+            padding: 15px;
             font-size: 0.9rem;
-            font-weight: 600;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            box-shadow: 0 4px 15px rgba(255, 0, 85, 0.3);
-            animation: glow 3s infinite alternate;
+            font-weight: 700;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 20px rgba(255, 0, 85, 0.4);
+            animation: pulse 3s infinite;
+            letter-spacing: 0.5px;
         }
 
-        @keyframes glow {
-            from { box-shadow: 0 0 5px rgba(255, 0, 85, 0.2); }
-            to { box-shadow: 0 0 20px rgba(255, 0, 85, 0.6); }
-        }
-
-        /* --- Watchlist Manager --- */
-        .watchlist-manager {
-            padding: 20px;
-        }
-        .watchlist-input {
-            width: 100%; padding: 12px; margin-bottom: 10px;
-            background: rgba(255,255,255,0.05); 
-            border: 1px solid rgba(255,255,255,0.1);
-            color: white; border-radius: 10px;
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
         }
 
         /* --- Loading --- */
         .spinner {
             border: 3px solid rgba(255,255,255,0.1); border-radius: 50%;
-            border-top-color: var(--accent); width: 24px; height: 24px;
+            border-top-color: var(--accent); width: 30px; height: 30px;
             animation: spin 1s linear infinite; margin: 30px auto;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
     </style>
 </head>
-<body>
+<body class="dark-mode">
 
     <!-- AUTHENTICATION VIEW -->
-    <div id="auth-view">
-        <div class="auth-card glass">
-            <h1 style="margin-bottom: 10px; font-size: 1.8rem;">Sisko StockSense</h1>
-            <p style="color: var(--text-muted); margin-bottom: 30px;" id="auth-subtitle">Sign in to access Sisko StockSense.</p>
+    <div id="auth-view" class="hidden">
+        <div class="auth-card glass glass-panel">
+            <h1 style="margin-bottom: 15px; font-size: 1.5rem;">Sisko StockSense</h1>
+            <p style="color: var(--text-muted); margin-bottom: 30px;" id="auth-subtitle">Sign in to access the liquid market.</p>
             
             <form id="login-form">
-                <input type="text" id="name-input" class="auth-input hidden" placeholder="Full Name">
+                <input type="text" id="name-input" class="auth-input" placeholder="Full Name" style="display:none;">
                 <input type="email" id="email-input" class="auth-input" placeholder="Enter your email" required>
-                <button type="submit" class="btn btn-primary w-full" id="auth-btn">Send Magic Link</button>
+                <button type="submit" class="btn btn-primary w-full">Access Platform</button>
             </form>
             
             <div class="auth-switch" id="auth-toggle">
@@ -273,23 +324,26 @@
     <!-- MAIN APP -->
     <div id="app-view" class="flex flex-col hidden">
         <header>
-            <div class="logo"><span style="color:white;">Sisko</span> StockSense</div>
-            <div class="flex items-center w-full justify-between" style="gap:15px;">
-                <!-- Search Bar -->
+            <div class="logo"><span>Sisko</span> StockSense</div>
+            <div class="flex items-center w-full justify-between" style="gap:20px;">
+                <button class="theme-toggle" onclick="toggleTheme()" title="Switch Theme">
+                    <i class="fa-solid fa-sun" id="theme-icon"></i>
+                </button>
+                
                 <div class="search-container">
                     <input type="text" id="search-input" class="search-input" placeholder="Search Ticker (e.g. AAPL)...">
-                    <i class="fa-solid fa-search" style="position:absolute; right:15px; top:12px; color:var(--text-muted);"></i>
+                    <i class="fa-solid fa-search" style="position:absolute; right:20px; top:15px; color:var(--text-muted);"></i>
                 </div>
-                <div id="user-badge" class="btn" style="padding: 4px 12px; background: rgba(255,255,255,0.1); color: white; font-size: 0.8rem; border-radius: 8px;">User</div>
+                
+                <div id="user-badge" class="glass" style="padding: 6px 12px; font-size: 0.8rem;">User</div>
             </div>
         </header>
 
         <!-- Watchlist / Market Tabs -->
-        <div class="tabs" id="watchlist-tabs">
+        <div class="tabs">
             <div class="tab active" onclick="switchTab('market')">Market Movers</div>
-            <!-- Dynamic Watchlist tabs -->
             <div id="dynamic-tabs-container" style="display:contents;"></div>
-            <button class="btn-icon" onclick="openCreateWatchlistModal()" style="margin-left: 10px; color: white;">
+            <button class="btn-icon" onclick="openCreateWatchlistModal()" style="margin-left: 20px; color: var(--text-main);">
                 <i class="fa-solid fa-plus"></i>
             </button>
         </div>
@@ -300,12 +354,12 @@
         </main>
 
         <!-- Profile Page View -->
-        <div id="profile-view" class="hidden glass" style="padding: 40px; text-align: center; max-width:400px; margin: 40px auto;">
-            <div style="font-size: 3.5rem; color: var(--accent); margin-bottom: 20px;">
+        <div id="profile-view" class="hidden glass glass-panel" style="padding: 50px; text-align: center; max-width: 450px; margin: 40px auto;">
+            <div style="font-size: 4rem; color: var(--accent); margin-bottom: 25px;">
                 <i class="fa-solid fa-user-circle"></i>
             </div>
-            <h2 id="profile-email" style="margin-bottom: 10px;">user@example.com</h2>
-            <p style="color: var(--text-muted); margin-bottom: 30px;">
+            <h2 id="profile-email" style="margin-bottom: 15px;">user@example.com</h2>
+            <p style="color: var(--text-muted); margin-bottom: 40px; font-size: 1.1rem;">
                 Premium Access Active
             </p>
             <button class="btn btn-danger w-full" onclick="handleLogout()">
@@ -320,7 +374,7 @@
             </div>
             
             <div style="display:flex; justify-content:center; gap:15px; align-items:center;">
-                <a href="https://siskocapital.netlify.app" target="_blank" class="btn" style="background: rgba(255,255,255,0.1); border: 1px solid var(--accent); color: var(--accent); padding: 8px 20px; border-radius: 20px;">
+                <a href="https://siskocapital.netlify.app" target="_blank" style="color: var(--text-main); font-weight: 600; text-decoration: none;">
                     Main Page
                 </a>
             </div>
@@ -328,20 +382,20 @@
             <div>
                 <span>Sisko Capital LLP</span>
                 <span style="margin: 0 10px;">&bull;</span>
-                <a href="https://www.instagram.com/siskocapital/" target="_blank" style="color:white;"><i class="fa-brands fa-instagram"></i> Follow Us</a>
+                <a href="https://www.instagram.com/siskocapital/" target="_blank" style="color: var(--text-main);"><i class="fa-brands fa-instagram"></i> Follow Us</a>
             </div>
         </footer>
     </div>
 
     <!-- STOCK DETAIL MODAL -->
     <div id="modal">
-        <div class="modal-content glass">
+        <div class="modal-content">
             <div class="modal-header">
-                <div class="flex items-center" style="gap: 10px;">
+                <div class="flex items-center" style="gap: 15px;">
                     <button class="btn-icon" onclick="closeModal()"><i class="fa-solid fa-arrow-left"></i></button>
                     <div>
-                        <div class="symbol" id="modal-symbol" style="font-size: 1.4rem;">AAPL</div>
-                        <div style="font-size: 0.9rem; color: var(--text-muted);">Powered by YFinance</div>
+                        <div class="symbol" id="modal-symbol" style="font-size: 1.5rem;">AAPL</div>
+                        <div style="font-size: 0.9rem; color: var(--text-muted);">YFinance Powered</div>
                     </div>
                 </div>
                 <button class="btn-icon" onclick="toggleWatchlistCurrent()"><i class="fa-regular fa-star" id="modal-star"></i></button>
@@ -366,73 +420,107 @@
                     <div class="final-analysis" id="final-text"></div>
                 </div>
                 <button id="analyze-btn" class="btn btn-primary w-full" onclick="runAIAnalysis()">
-                    <i class="fa-solid fa-wand-magic-sparkles"></i> Analyze with Sisko AI?
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Analyze with Sisko AI
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- WATCHLIST MODAL (Add Stock) -->
-    <div id="add-stock-modal" class="hidden glass" style="position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); z-index:150; width: 300px; padding:20px; border-radius:20px;">
-        <h3>Add to Watchlist</h3>
-        <input type="text" id="add-stock-name" class="watchlist-input" placeholder="Stock Symbol (e.g. TSLA)">
-        <div class="flex" style="gap:10px; margin-top:15px;">
-            <select id="add-watchlist-select" class="watchlist-input" style="background:rgba(0,0,0,0.3); color:white; border:none;">
-                <!-- Options filled by JS -->
+    <!-- WATCHLIST MODALS -->
+    <div id="create-watchlist-modal">
+        <h3 style="margin-bottom: 20px;">Create Watchlist</h3>
+        <input type="text" id="new-watchlist-name" class="auth-input" placeholder="Watchlist Name (e.g. Tech Giants)">
+        <div class="flex" style="gap:15px; margin-top:20px;">
+            <button class="btn btn-primary" style="flex:1;" onclick="confirmCreateWatchlist()">Create</button>
+            <button class="btn-icon" onclick="document.getElementById('create-watchlist-modal').classList.remove('open')"><i class="fa-solid fa-times"></i></button>
+        </div>
+    </div>
+
+    <div id="add-stock-modal">
+        <h3 style="margin-bottom: 20px;">Add to Watchlist</h3>
+        <input type="text" id="add-stock-name" class="auth-input" placeholder="Stock Symbol (e.g. TSLA)">
+        <div class="flex" style="gap:15px; margin-top:20px;">
+            <select id="add-watchlist-select" class="auth-input">
+                <!-- Populated by JS -->
             </select>
             <button class="btn btn-primary" style="flex:1;" onclick="confirmAddStock()">Add</button>
-            <button class="btn-icon" onclick="document.getElementById('add-stock-modal').classList.add('hidden')"><i class="fa-solid fa-times"></i></button>
+            <button class="btn-icon" onclick="document.getElementById('add-stock-modal').classList.remove('open')"><i class="fa-solid fa-times"></i></button>
         </div>
     </div>
 
-    <!-- CREATE WATCHLIST MODAL -->
-    <div id="create-watchlist-modal" class="hidden glass" style="position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); z-index:150; width: 320px; padding:20px; border-radius:20px;">
-        <h3>Create Watchlist</h3>
-        <input type="text" id="new-watchlist-name" class="watchlist-input" placeholder="Watchlist Name (e.g. Tech Giants)">
-        <div class="flex" style="gap:10px; margin-top:15px;">
-            <button class="btn btn-primary" style="flex:1;" onclick="confirmCreateWatchlist()">Create</button>
-            <button class="btn-icon" onclick="document.getElementById('create-watchlist-modal').classList.add('hidden')"><i class="fa-solid fa-times"></i></button>
-        </div>
-    </div>
-
-    <!-- MAIN MODULE STARTS HERE -->
+    <!-- MAIN SCRIPT STARTS HERE -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
         import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-analytics.js";
         import { getAuth, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
 
-        // --- WRAPPER FUNCTION ---
-        async function initApp() {
-            
-            // --- FETCH CONFIG ---
-            let DEEPSEEK_KEY = "";
-            
-            async function fetchConfig() {
-                try {
-                    // Fetch from your existing get-config.js (DeepSeek Key)
-                    const res = await fetch('/.netlify/functions/get-config');
-                    if(!res.ok) throw new Error("Failed to fetch config");
-                    const data = await res.json();
-                    
-                    console.log("Config Data:", data);
-                    DEEPSEEK_KEY = data.DEEPSEEK_KEY;
-                    
-                    if (!DEEPSEEK_KEY) {
-                        alert("Error: DEEPSEEK_KEY is missing from Netlify Environment Variables.");
-                        return false;
-                    }
-                    return true;
-                } catch (e) {
-                    console.error("Config Error:", e);
-                    alert("Error loading configuration. Make sure you updated get-config.js and deployed it.");
+        // --- CONFIG ---
+        let DEEPSEEK_KEY = "";
+        let FINNHUB_KEY = ""; // Used for Screener List (Fast)
+        
+        async function fetchConfig() {
+            try {
+                const res = await fetch('/.netlify/functions/get-config');
+                if(!res.ok) throw new Error("Failed to fetch config");
+                const data = await res.json();
+                
+                console.log("Config Data:", data);
+
+                DEEPSEEK_KEY = data.DEEPSEEK_KEY;
+                FINNHUB_KEY = data.FINNHUB_KEY;
+                
+                if (!DEEPSEEK_KEY) {
+                    alert("Error: DEEPSEEK_KEY is missing.");
                     return false;
                 }
+                return true;
+            } catch (e) {
+                console.error("Config Error:", e);
+                // Continue without keys for UI demo if config fails
+                return true;
             }
+        }
 
-            const hasConfig = await fetchConfig();
-            if (!hasConfig) return; 
+        // --- THEME LOGIC ---
+        window.toggleTheme = () => {
+            document.body.classList.toggle('light-mode');
+            document.body.classList.toggle('dark-mode');
+            
+            const icon = document.getElementById('theme-icon');
+            if (document.body.classList.contains('light-mode')) {
+                icon.className = "fa-solid fa-moon";
+                localStorage.setItem('theme', 'light');
+            } else {
+                icon.className = "fa-solid fa-sun";
+                localStorage.setItem('theme', 'dark');
+            }
+            updateModalColors();
+        };
 
-            // Firebase Config
+        function updateModalColors() {
+            const priceEl = document.getElementById('modal-price');
+            if(document.body.classList.contains('light-mode')) {
+                priceEl.classList.remove('dark-mode');
+                priceEl.classList.add('light-mode');
+            } else {
+                priceEl.classList.remove('light-mode');
+                priceEl.classList.add('dark-mode');
+            }
+        }
+
+        // --- INITIALIZATION ---
+        async function initApp() {
+            // Apply saved theme
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            if (savedTheme === 'light') document.body.classList.add('light-mode');
+            else document.body.classList.add('dark-mode');
+            
+            const icon = document.getElementById('theme-icon');
+            if (savedTheme === 'light') icon.className = "fa-solid fa-moon";
+            else icon.className = "fa-solid fa-sun";
+
+            const hasConfig = await fetchConfig(); 
+
             const firebaseConfig = {
                 apiKey: "AIzaSyAaIpgze1gQ-vd3TI4fP5XWJlbzqzO-PXY",
                 authDomain: "siskoai.firebaseapp.com",
@@ -452,7 +540,6 @@
             let isSignup = false;
             let activeTab = 'market';
             
-            // Default Watchlist Structure
             let watchlists = [
                 { id: 1, name: 'Tech Favorites', symbols: ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA'] },
                 { id: 2, name: 'Retail', symbols: ['WMT', 'COST', 'TGT', 'HD'] }
@@ -467,10 +554,9 @@
                 renderTabs();
             }
 
-            // Market Movers (Using Python YFinance via API)
             const marketMoversList = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'TSLA', 'META', 'NFLX', 'AMD', 'INTC', 'CSCO', 'ADBE', 'CRM', 'ORCL', 'IBM', 'JNJ', 'V', 'WMT', 'DIS'];
 
-            // --- AUTHENTICATION LOGIC ---
+            // --- AUTH ---
             const actionCodeSettings = {
                 url: window.location.href,
                 handleCodeInApp: true,
@@ -480,17 +566,17 @@
                 isSignup = !isSignup;
                 const nameInput = document.getElementById('name-input');
                 const title = document.getElementById('auth-subtitle');
-                const btn = document.getElementById('auth-btn');
+                const btn = document.querySelector('#login-form button');
                 const toggle = document.getElementById('auth-toggle');
                 
                 if (isSignup) {
-                    nameInput.classList.remove('hidden');
-                    title.innerText = "Create your account to start trading smarter.";
+                    nameInput.style.display = 'block';
+                    title.innerText = "Create your account.";
                     btn.innerText = "Send Sign Up Link";
                     toggle.innerHTML = 'Already have an account? <span onclick="toggleAuthMode()">Sign In</span>';
                 } else {
-                    nameInput.classList.add('hidden');
-                    title.innerText = "Sign in to access the intelligent screener.";
+                    nameInput.style.display = 'none';
+                    title.innerText = "Sign in to access the liquid market.";
                     btn.innerText = "Send Magic Link";
                     toggle.innerHTML = 'New user? <span onclick="toggleAuthMode()">Create Account</span>';
                 }
@@ -502,9 +588,7 @@
                 const msg = document.getElementById('auth-msg');
                 
                 if (window.location.protocol === 'file:') {
-                    alert("ERROR: You are opening this file directly from your folder.\n\nFirebase requires a server (http:// or https://).");
-                    msg.innerText = "Error: Invalid Protocol.";
-                    msg.style.color = "var(--down)";
+                    alert("ERROR: Please open via Netlify or Localhost (http/https).");
                     return;
                 }
                 
@@ -517,10 +601,8 @@
                     await sendSignInLinkToEmail(auth, email, actionCodeSettings);
                     window.localStorage.setItem('emailForSignIn', email);
                     msg.innerText = "Magic link sent! Check your email.";
-                    msg.style.color = "var(--up)";
                 } catch (error) {
                     msg.innerText = "Error: " + error.message;
-                    msg.style.color = "var(--down)";
                 }
             });
 
@@ -534,6 +616,7 @@
                         window.localStorage.removeItem('emailForSignIn');
                         const tempName = localStorage.getItem('sisko_temp_name');
                         if(tempName) {
+                            // await updateProfile(result.user, { displayName: tempName }); 
                             localStorage.removeItem('sisko_temp_name');
                         }
                         window.location.href = window.location.pathname; 
@@ -559,6 +642,7 @@
                     
                     document.getElementById('screener-content').classList.remove('hidden');
                     document.getElementById('watchlist-tabs').classList.remove('hidden');
+                    document.getElementById('profile-view').classList.add('hidden');
 
                     const displayName = user.displayName || user.email.split('@')[0];
                     document.getElementById('user-badge').innerText = displayName;
@@ -616,31 +700,8 @@
                 container.appendChild(profileTab);
             }
 
-            window.openCreateWatchlistModal = () => {
-                const select = document.getElementById('add-watchlist-select');
-                select.innerHTML = watchlists.map(w => `<option value="${w.id}">${w.name}</option>`).join('');
-                
-                document.getElementById('add-stock-modal').classList.remove('hidden');
-                document.getElementById('add-stock-name').value = '';
-            }
-
-            window.openCreateWatchlistModalList = () => {
-                document.getElementById('create-watchlist-modal').classList.remove('hidden');
-                document.getElementById('new-watchlist-name').value = '';
-                document.getElementById('create-watchlist-modal').classList.remove('hidden');
-            }
-
-            window.confirmCreateWatchlist = () => {
-                const name = document.getElementById('new-watchlist-name').value;
-                if(!name) return;
-                const newId = Date.now();
-                watchlists.push({ id: newId, name: name, symbols: [] });
-                saveWatchlists();
-                switchTab(newId);
-                document.getElementById('create-watchlist-modal').classList.add('hidden');
-            }
-
-            // --- MARKET DATA (YFINANCE VIA NETLIFY PYTHON FUNCTION) ---
+            // --- MARKET DATA (Mixed Strategy) ---
+            // Strategy: Use Finnhub for the Screener List (Fast). Use Python/YFinance for Charts (If available).
             window.loadMarketData = async () => {
                 const listEl = document.getElementById('stock-list');
                 listEl.innerHTML = '<div class="spinner"></div>';
@@ -652,26 +713,33 @@
                     fetchList = activeListObj ? activeListObj.symbols : [];
                 }
 
+                const limitedList = fetchList.slice(0, 20);
+
                 try {
-                    // Fetch data from your Python Netlify Function
-                    // We fetch one by one to simplify the python backend logic
-                    const promises = fetchList.map(async (ticker) => {
-                        const res = await fetch(`/.netlify/functions/get_stock_data?symbol=${ticker}`);
-                        const json = await res.json();
-                        return json;
+                    // Using Finnhub for the list because it's fast and reliable
+                    const promises = limitedList.map(async (ticker) => {
+                        try {
+                            const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${FINNHUB_KEY}`);
+                            if(!res.ok) return null;
+                            const json = await res.json();
+                            return { ...json, symbol: ticker };
+                        } catch (e) {
+                            return null;
+                        }
                     });
 
                     const results = await Promise.all(promises);
+                    let data = results.filter(item => item !== null && item.c !== 0);
 
                     if (activeTab === 'market') {
-                        results.sort((a, b) => b.dp - a.dp);
+                        data.sort((a, b) => b.dp - a.dp);
                     }
 
-                    renderList(results);
+                    renderList(data);
 
                 } catch (err) {
-                    console.error("YFinance Error", err);
-                    listEl.innerHTML = `<div style="padding:20px; text-align:center; color:var(--down)">Error loading data from YFinance. Check Python Function.</div>`;
+                    console.error("Market Error", err);
+                    listEl.innerHTML = `<div style="padding:20px; text-align:center; color:var(--down)">Error loading data.</div>`;
                 }
             };
 
@@ -680,7 +748,7 @@
                 listEl.innerHTML = '';
                 
                 if(!stocks || stocks.length === 0) {
-                    listEl.innerHTML = `<div style="padding:20px; text-align:center; color:var(--text-muted)">Watchlist empty.</div>`;
+                    listEl.innerHTML = `<div style="padding:40px; text-align:center; color:var(--text-muted)">Watchlist empty.</div>`;
                     return;
                 }
                 
@@ -692,7 +760,9 @@
                     const sign = changeP >= 0 ? '+' : '';
 
                     const row = document.createElement('div');
-                    row.className = 'stock-row';
+                    row.className = 'stock-row glass glass-panel';
+                    row.style.marginBottom = "10px";
+                    row.style.marginTop = "10px";
                     row.innerHTML = `
                         <div>
                             <div class="symbol">${symbol}</div>
@@ -706,7 +776,7 @@
                 });
             }
 
-            // --- STOCK DETAILS & CHART (YFINANCE) ---
+            // --- STOCK DETAILS (YFinance for Charts) ---
             window.openStockDetail = async (ticker) => {
                 currentStock = ticker;
                 document.getElementById('modal-symbol').innerText = ticker;
@@ -724,23 +794,55 @@
                 } else {
                     star.classList.remove('fa-solid');
                     star.classList.add('fa-regular');
-                    star.style.color = 'var(--text)';
+                    star.style.color = 'var(--text-muted)';
                 }
 
                 try {
-                    // Fetch full chart data (2mo history)
-                    const res = await fetch(`/.netlify/functions/get_stock_data?symbol=${ticker}`);
-                    const stockData = await res.json();
+                    // Try to fetch from Python/YFinance function
+                    // Note: If this fails (404), we fallback to Finnhub
+                    let chartData = null;
 
-                    if(stockData.chart && stockData.chart.data.length > 0) {
-                        const prices = stockData.chart.data; 
-                        const labels = stockData.chart.labels;
+                    try {
+                        const res = await fetch(`/.netlify/functions/get_stock_data?symbol=${ticker}`);
+                        if(res.ok) {
+                            const json = await res.json();
+                            chartData = json.chart;
+                            
+                            if(json.chart && json.chart.labels) {
+                                // Use the last price from YFinance
+                                const lastP = json.chart.data[json.chart.data.length - 1];
+                                document.getElementById('modal-price').innerText = lastP.toFixed(2);
+                            }
+                        }
+                    } else {
+                        throw new Error("YFinance 404 or Timeout");
+                    }
+                    } catch (pyError) {
+                        console.log("Python function failed, using Finnhub fallback...");
+                    }
+
+                    // FALLBACK: If Python fails, fetch from Finnhub
+                    if(!chartData) {
+                        const quoteRes = await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${FINNHUB_KEY}`);
+                        const quoteJson = await quoteRes.json();
+                        if (quoteJson.c) {
+                             document.getElementById('modal-price').innerText = quoteJson.c.toFixed(2);
+                        }
+
+                        const chartRes = await fetch(`https://finnhub.io/api/v1/stock/candle?symbol=${ticker}&resolution=D&count=60&token=${FINNHUB_KEY}`);
+                        const chartJson = await chartRes.json();
                         
-                        // Set Price
-                        const currentP = parseFloat(stockData.c);
-                        document.getElementById('modal-price').innerText = currentP.toFixed(2);
-                        
-                        renderChart(labels, prices);
+                        if(chartJson.c && chartJson.c.length > 0) {
+                            const labels = chartJson.t.map((ts) => {
+                                const d = new Date(ts * 1000); 
+                                return `${d.getMonth()+1}/${d.getDate()}`;
+                            });
+                            chartData = { labels: labels, data: chartJson.c };
+                        }
+                    }
+
+                    if(chartData && chartData.labels) {
+                        renderChart(chartData.labels, chartData.data);
                     } else {
                          document.getElementById('modal-price').innerText = "No Data";
                     }
@@ -757,10 +859,19 @@
             function renderChart(labels, data) {
                 const ctx = document.getElementById('stockChart').getContext('2d');
                 
-                // Apple-style smooth curve
-                let gradient = ctx.createLinearGradient(0, 0, 0, 350);
-                gradient.addColorStop(0, 'rgba(10, 132, 255, 0.3)');
-                gradient.addColorStop(1, 'rgba(10, 132, 255, 0)');
+                // Dynamic gradient based on theme
+                let gradient;
+                if(document.body.classList.contains('light-mode')) {
+                    gradient = ctx.createLinearGradient(0, 0, 0, 350);
+                    gradient.addColorStop(0, 'rgba(0, 122, 255, 0.3)');
+                    gradient.addColorStop(1, 'rgba(0, 122, 255, 0.0)');
+                } else {
+                    gradient = ctx.createLinearGradient(0, 0, 0, 350);
+                    gradient.addColorStop(0, 'rgba(41, 98, 255, 0.3)');
+                    gradient.addColorStop(1, 'rgba(41, 98, 255, 0.0)');
+                }
+
+                const borderColor = document.body.classList.contains('light-mode') ? '#007aff' : '#2962FF';
 
                 if(stockChartInstance) stockChartInstance.destroy();
 
@@ -771,38 +882,23 @@
                         datasets: [{
                             label: 'Price',
                             data: data,
-                            borderColor: '#0A84FF',
+                            borderColor: borderColor,
                             backgroundColor: gradient,
                             borderWidth: 3,
                             fill: true,
                             pointRadius: 0,
-                            tension: 0.4 // Smoother for liquid look
+                            tension: 0.4
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        plugins: { 
-                            legend: { display: false },
-                            tooltip: {
-                                backgroundColor: 'rgba(0,0,0,0.8)',
-                                titleColor: '#fff',
-                                bodyColor: '#fff',
-                                titleFont: 'Inter',
-                                bodyFont: 'Inter',
-                                padding: 10,
-                                cornerRadius: 8,
-                                displayColors: false
-                            }
-                        },
+                        plugins: { legend: { display: false } },
                         scales: {
-                            x: { 
-                                display: false 
-                            },
+                            x: { display: false },
                             y: { 
                                 position: 'right', 
-                                grid: { color: 'rgba(255,255,255,0.05)' },
-                                ticks: { color: 'var(--text-muted)' }
+                                grid: { color: document.body.classList.contains('light-mode') ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)' } 
                             }
                         }
                     }
@@ -810,6 +906,28 @@
             }
 
             // --- WATCHLIST MANAGEMENT ---
+            window.openCreateWatchlistModal = () => {
+                document.getElementById('create-watchlist-modal').classList.add('open');
+                document.getElementById('new-watchlist-name').value = '';
+            }
+
+            window.openAddStockModal = () => {
+                const select = document.getElementById('add-watchlist-select');
+                select.innerHTML = watchlists.map(w => `<option value="${w.id}">${w.name}</option>`).join('');
+                document.getElementById('add-stock-modal').classList.add('open');
+                document.getElementById('add-stock-name').value = '';
+            }
+
+            window.confirmCreateWatchlist = () => {
+                const name = document.getElementById('new-watchlist-name').value;
+                if(!name) return;
+                const newId = Date.now();
+                watchlists.push({ id: newId, name: name, symbols: [] });
+                saveWatchlists();
+                switchTab(newId);
+                document.getElementById('create-watchlist-modal').classList.remove('open');
+            }
+
             window.confirmAddStock = () => {
                 const symbol = document.getElementById('add-stock-name').value.toUpperCase();
                 const listId = parseInt(document.getElementById('add-watchlist-select').value);
@@ -821,11 +939,10 @@
                     list.symbols.push(symbol);
                     saveWatchlists();
                     
-                    // If on the same list, refresh
                     if(activeTab === listId) {
                         loadMarketData();
                     }
-                    document.getElementById('add-stock-modal').classList.add('hidden');
+                    document.getElementById('add-stock-modal').classList.remove('open');
                 } else {
                     alert("Stock already in watchlist");
                 }
@@ -852,11 +969,11 @@
                 } else {
                     star.classList.remove('fa-solid');
                     star.classList.add('fa-regular');
-                    star.style.color = 'var(--text)';
+                    star.style.color = 'var(--text-muted)';
                 }
             };
 
-            // --- DEEPSEEK AI REASONER ---
+            // --- AI ANALYSIS ---
             window.runAIAnalysis = async () => {
                 if(!currentStock) return;
 
@@ -904,7 +1021,7 @@
             }
         }
 
-        // Start app
+        // Start App
         initApp();
 
     </script>
