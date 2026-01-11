@@ -14,9 +14,9 @@
     
     <style>
         :root {
-            --up: #00C853;   /* TradingView Green */
-            --down: #FF3D00; /* TradingView Red */
-            --bg: #131722;   /* TradingView Dark */
+            --up: #00C853;
+            --down: #FF3D00;
+            --bg: #131722;
             --bg-card: #1E222D;
             --border: #2A2E39;
             --text: #D1D4DC;
@@ -49,8 +49,10 @@
         .text-down { color: var(--down); }
         .hidden { display: none !important; }
         .font-mono { font-family: 'JetBrains Mono', monospace; }
-        .btn { cursor: pointer; border: none; outline: none; }
+        .btn { cursor: pointer; border: none; outline: none; transition: 0.2s; }
+        .btn:hover { opacity: 0.8; }
         .btn-primary { background: var(--accent); color: white; padding: 8px 16px; border-radius: 4px; }
+        .btn-danger { background: var(--down); color: white; padding: 8px 16px; border-radius: 4px; }
         .btn-icon { background: transparent; color: var(--text-muted); padding: 8px; font-size: 1.2rem; }
 
         /* --- Auth View --- */
@@ -78,7 +80,7 @@
         /* --- Main App Layout --- */
         header {
             background: var(--bg-card);
-            border-bottom: 1px solid var(--border);
+            border-bottom:1px solid var(--border);
             padding: 10px 15px;
             display: flex; align-items: center; justify-content: space-between;
         }
@@ -142,19 +144,30 @@
         /* --- Footer --- */
         footer {
             background: var(--bg-card); border-top: 1px solid var(--border);
-            padding: 15px; text-align: center; font-size: 0.85rem; color: var(--text-muted);
-            display: flex; justify-content: center; align-items: center; gap: 10px;
+            padding: 10px; text-align: center; font-size: 0.85rem; color: var(--text-muted);
+            display: flex; flex-direction: column; gap: 10px;
         }
         footer a { color: var(--accent); text-decoration: none; }
 
         /* --- Floating Action Button --- */
         .fab {
-            position: fixed; bottom: 80px; right: 20px;
+            position: fixed; bottom: 90px; right: 20px;
             width: 50px; height: 50px; border-radius: 50%;
             background: var(--accent); color: white;
             display: flex; align-items: center; justify-content: center;
             box-shadow: 0 4px 10px rgba(0,0,0,0.3); font-size: 1.2rem;
             cursor: pointer; z-index: 40;
+        }
+
+        /* --- Watchlist Manager --- */
+        .watchlist-manager {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 8px; margin: 10px; padding: 10px;
+        }
+        .watchlist-input {
+            width: 100%; padding: 8px; margin-bottom: 8px;
+            background: var(--bg); border: 1px solid var(--border);
+            color: var(--text); border-radius: 4px;
         }
 
         /* --- Loading --- */
@@ -201,7 +214,11 @@
         <!-- Watchlist / Market Tabs -->
         <div class="tabs" id="watchlist-tabs">
             <div class="tab active" onclick="switchTab('market')">Market Movers</div>
-            <div class="tab" onclick="switchTab('watchlist')">Watchlist 1</div>
+            <!-- Dynamic Watchlist tabs will be injected here -->
+            <div id="dynamic-tabs-container" style="display:contents;"></div>
+            <button class="btn-icon" onclick="openCreateWatchlistModal()" style="margin-left: 10px; color: var(--accent);">
+                <i class="fa-solid fa-plus"></i>
+            </button>
         </div>
 
         <main id="screener-content">
@@ -209,14 +226,37 @@
             <div id="stock-list"></div>
         </main>
 
+        <!-- Profile Page View (Hidden by default) -->
+        <div id="profile-view" class="hidden" style="padding: 30px; text-align: center;">
+            <div style="background: var(--bg-card); padding: 40px; border-radius: 8px; border: 1px solid var(--border); max-width: 400px; margin: 0 auto;">
+                <div style="font-size: 3rem; color: var(--accent); margin-bottom: 20px;">
+                    <i class="fa-solid fa-user-circle"></i>
+                </div>
+                <h2 id="profile-email" style="margin-bottom: 10px;">user@example.com</h2>
+                <p style="color: var(--text-muted); margin-bottom: 30px;">
+                    Premium Access Active
+                </p>
+                <button class="btn btn-danger w-full" onclick="handleLogout()">
+                    <i class="fa-solid fa-sign-out-alt"></i> Log Out
+                </button>
+            </div>
+        </div>
+
         <a href="https://www.instagram.com/siskocapital/" target="_blank" class="fab">
             <i class="fa-brands fa-instagram"></i>
         </a>
 
         <footer>
-            <span>Sisko Capital LLP</span>
-            <span>&bull;</span>
-            <a href="https://www.instagram.com/siskocapital/" target="_blank"><i class="fa-brands fa-instagram"></i> Follow Us</a>
+            <div style="display:flex; justify-content:center; gap:10px; align-items:center;">
+                <a href="https://siskocapital.netlify.app" target="_blank" class="btn" style="background: var(--bg-card); border: 1px solid var(--accent); color: var(--accent); width: auto; display:inline-flex;">
+                    Main Page
+                </a>
+            </div>
+            <div>
+                <span>Sisko Capital LLP</span>
+                <span>&bull;</span>
+                <a href="https://www.instagram.com/siskocapital/" target="_blank"><i class="fa-brands fa-instagram"></i> Follow Us</a>
+            </div>
         </footer>
     </div>
 
@@ -241,7 +281,7 @@
 
         <div class="ai-section">
             <div class="ai-header">
-                <i class="fa-solid fa-brain"></i> Sisko AI - FinKing V2.
+                <i class="fa-solid fa-brain"></i> Sisko AI (FinKing V2.2)
             </div>
             <div id="ai-loader" class="spinner hidden"></div>
             <div id="ai-content" class="hidden">
@@ -257,11 +297,21 @@
         </div>
     </div>
 
+    <!-- CREATE WATCHLIST MODAL -->
+    <div id="create-watchlist-modal" class="hidden" style="position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:var(--bg-card); padding:20px; border-radius:8px; border:1px solid var(--border); z-index:150; min-width:300px;">
+        <h3>Create Watchlist</h3>
+        <input type="text" id="new-watchlist-name" class="watchlist-input" placeholder="Watchlist Name (e.g. Tech Giants)">
+        <div class="flex" style="gap:10px; margin-top:10px;">
+            <button class="btn btn-primary" style="flex:1;" onclick="confirmCreateWatchlist()">Create</button>
+            <button class="btn btn-icon" onclick="document.getElementById('create-watchlist-modal').classList.add('hidden')"><i class="fa-solid fa-times"></i></button>
+        </div>
+    </div>
+
     <!-- MAIN MODULE STARTS HERE -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
         import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-analytics.js";
-        import { getAuth, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
+        import { getAuth, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
 
         // --- WRAPPER FUNCTION TO HANDLE AWAIT AND RETURN ---
         async function initApp() {
@@ -314,13 +364,24 @@
             let currentStock = null;
             let stockChartInstance = null;
             let isSignup = false;
-            let watchlist = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'NVDA', 'META', 'NFLX']; 
+            let activeTab = 'market';
             
-            if(localStorage.getItem('sisko_watchlist')) {
-                watchlist = JSON.parse(localStorage.getItem('sisko_watchlist'));
+            // Default Watchlist Structure: Array of objects
+            let watchlists = [
+                { id: 1, name: 'Tech Favorites', symbols: ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA'] },
+                { id: 2, name: 'Retail', symbols: ['WMT', 'COST', 'TGT', 'HD'] }
+            ];
+            
+            if(localStorage.getItem('sisko_watchlists')) {
+                watchlists = JSON.parse(localStorage.getItem('sisko_watchlists'));
             }
 
-            // Predefined list of high-volume stocks to generate "Market Movers"
+            function saveWatchlists() {
+                localStorage.setItem('sisko_watchlists', JSON.stringify(watchlists));
+                renderTabs();
+            }
+
+            // Predefined list for market movers
             const marketMoversList = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'TSLA', 'META', 'NFLX', 'AMD', 'INTC', 'CSCO', 'ADBE', 'CRM', 'ORCL', 'IBM', 'JNJ', 'V', 'WMT', 'DIS', 'NFLX'];
 
             // --- AUTHENTICATION LOGIC ---
@@ -396,48 +457,120 @@
                     });
             }
 
+            window.handleLogout = () => {
+                signOut(auth).then(() => {
+                    window.location.reload();
+                }).catch((error) => {
+                    alert("Error logging out: " + error.message);
+                });
+            }
+
             onAuthStateChanged(auth, (user) => {
                 if (user) {
                     document.getElementById('auth-view').classList.add('hidden');
                     document.getElementById('app-view').classList.remove('hidden');
+                    document.getElementById('profile-view').classList.add('hidden');
                     
+                    // Start on main page
+                    document.getElementById('screener-content').classList.remove('hidden');
+                    document.getElementById('watchlist-tabs').classList.remove('hidden');
+
                     const displayName = user.displayName || user.email.split('@')[0];
                     document.getElementById('user-badge').innerText = displayName;
+                    document.getElementById('profile-email').innerText = user.email;
                     
+                    renderTabs();
                     loadMarketData(); 
                 } else {
                     document.getElementById('auth-view').classList.remove('hidden');
                     document.getElementById('app-view').classList.add('hidden');
+                    document.getElementById('profile-view').classList.add('hidden');
                 }
             });
+
+            // --- TAB MANAGEMENT ---
+            window.switchTab = (tabId) => {
+                if (tabId === 'profile') {
+                    document.getElementById('screener-content').classList.add('hidden');
+                    document.getElementById('watchlist-tabs').classList.add('hidden');
+                    document.getElementById('profile-view').classList.remove('hidden');
+                    return;
+                }
+                
+                activeTab = tabId;
+                document.getElementById('screener-content').classList.remove('hidden');
+                document.getElementById('watchlist-tabs').classList.remove('hidden');
+                document.getElementById('profile-view').classList.add('hidden');
+                
+                renderTabs();
+                loadMarketData();
+            }
+
+            function renderTabs() {
+                const container = document.getElementById('dynamic-tabs-container');
+                container.innerHTML = '';
+
+                // Market Tab
+                const marketTab = document.createElement('div');
+                marketTab.className = `tab ${activeTab === 'market' ? 'active' : ''}`;
+                marketTab.innerText = 'Market Movers';
+                marketTab.onclick = () => switchTab('market');
+                container.appendChild(marketTab);
+
+                // Watchlist Tabs
+                watchlists.forEach(list => {
+                    const wTab = document.createElement('div');
+                    wTab.className = `tab ${activeTab === list.id ? 'active' : ''}`;
+                    wTab.innerText = list.name;
+                    wTab.onclick = () => switchTab(list.id);
+                    container.appendChild(wTab);
+                });
+
+                // Profile Tab
+                const profileTab = document.createElement('div');
+                profileTab.className = `tab ${activeTab === 'profile' ? 'active' : ''}`;
+                profileTab.innerHTML = '<i class="fa-solid fa-user"></i>';
+                profileTab.onclick = () => switchTab('profile');
+                container.appendChild(profileTab);
+            }
+
+            window.openCreateWatchlistModal = () => {
+                document.getElementById('create-watchlist-modal').classList.remove('hidden');
+                document.getElementById('new-watchlist-name').value = '';
+                document.getElementById('create-watchlist-modal').classList.remove('hidden');
+            }
+
+            window.confirmCreateWatchlist = () => {
+                const name = document.getElementById('new-watchlist-name').value;
+                if(!name) return;
+                const newId = Date.now();
+                watchlists.push({ id: newId, name: name, symbols: [] });
+                saveWatchlists();
+                switchTab(newId);
+                document.getElementById('create-watchlist-modal').classList.add('hidden');
+            }
 
             // --- MARKET DATA (FINNHUB) ---
             window.loadMarketData = async () => {
                 const listEl = document.getElementById('stock-list');
                 listEl.innerHTML = '<div class="spinner"></div>';
 
-                let mode = 'watchlist';
-                const activeTab = document.querySelector('.tab.active').innerText;
-                if (activeTab === 'Market Movers') {
-                    mode = 'market';
+                let data = [];
+                let fetchList = marketMoversList;
+                
+                if (activeTab !== 'market') {
+                    const activeListObj = watchlists.find(w => w.id === activeTab);
+                    fetchList = activeListObj ? activeListObj.symbols : [];
                 }
 
-                try {
-                    let data = [];
-                    
-                    // Finnhub requires individual requests for quotes (no batch endpoint in free tier)
-                    // We fetch a batch of stocks and sort them to simulate "Movers"
-                    
-                    const fetchList = mode === 'market' ? marketMoversList : watchlist;
-                    const limitedList = fetchList.slice(0, 20); // Limit to 20 to save calls/time
+                const limitedList = fetchList.slice(0, 20);
 
+                try {
                     const promises = limitedList.map(async (ticker) => {
                         try {
                             const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${FINNHUB_KEY}`);
                             if(!res.ok) return null;
                             const json = await res.json();
-                            // Finnhub returns { c: price, d: change, dp: percent_change, ... }
-                            // Add symbol manually since Finnhub quote doesn't always return it in JSON body
                             return { ...json, symbol: ticker };
                         } catch (e) {
                             return null;
@@ -445,21 +578,17 @@
                     });
 
                     const results = await Promise.all(promises);
-                    // Filter out failures
                     data = results.filter(item => item !== null && item.c !== 0);
 
-                    if (mode === 'market') {
-                        // Sort by percentage change descending (Gainers)
+                    if (activeTab === 'market') {
                         data.sort((a, b) => b.dp - a.dp);
-                        // Take top 10
-                        data = data.slice(0, 20);
                     }
 
                     renderList(data);
 
                 } catch (err) {
                     console.error("Finnhub Error", err);
-                    listEl.innerHTML = `<div style="padding:20px; text-align:center; color:var(--down)">Error loading data. (Check API Key/Credits)</div>`;
+                    listEl.innerHTML = `<div style="padding:20px; text-align:center; color:var(--down)">Error loading data.</div>`;
                 }
             };
 
@@ -468,17 +597,14 @@
                 listEl.innerHTML = '';
                 
                 if(!stocks || stocks.length === 0) {
-                    listEl.innerHTML = `<div style="padding:20px; text-align:center; color:var(--text-muted)">No data available.</div>`;
+                    listEl.innerHTML = `<div style="padding:20px; text-align:center; color:var(--text-muted)">Watchlist empty. Add stocks!</div>`;
                     return;
                 }
                 
                 stocks.forEach(stock => {
                     const symbol = stock.symbol;
                     const price = parseFloat(stock.c);
-                    // Finnhub 'dp' is percentage change (e.g. 1.25 means 1.25%)
                     const changeP = parseFloat(stock.dp);
-                    const changeAbs = parseFloat(stock.d);
-
                     const colorClass = changeP >= 0 ? 'text-up' : 'text-down';
                     const sign = changeP >= 0 ? '+' : '';
 
@@ -498,13 +624,7 @@
                 });
             }
 
-            window.switchTab = (tabName) => {
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                event.target.classList.add('active');
-                loadMarketData();
-            }
-
-            // --- STOCK DETAILS & CHART (FINNHUB) ---
+            // --- STOCK DETAILS & CHART (FINNHUB - TIMESERIES) ---
             window.openStockDetail = async (ticker) => {
                 currentStock = ticker;
                 document.getElementById('modal-symbol').innerText = ticker;
@@ -515,7 +635,7 @@
                 document.getElementById('ai-loader').classList.add('hidden');
 
                 const star = document.getElementById('modal-star');
-                if(watchlist.includes(ticker)) {
+                if(watchlists.some(w => w.symbols.includes(ticker))) {
                     star.classList.remove('fa-regular');
                     star.classList.add('fa-solid');
                     star.style.color = '#FEB019';
@@ -526,23 +646,23 @@
                 }
 
                 try {
-                    // Get current to latest price
+                    // Get current quote
                     const quoteRes = await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${FINNHUB_KEY}`);
                     const quoteJson = await quoteRes.json();
                     if (quoteJson.c) {
                          document.getElementById('modal-price').innerText = quoteJson.c.toFixed(2);
                     }
 
-                    // Get Intraday Chart (Candles)
-                    // resolution=1 is 1 minute
-                    const chartRes = await fetch(`https://finnhub.io/api/v1/stock/candle?symbol=${ticker}&resolution=1&count=50&token=${FINNHUB_KEY}`);
+                    // Try fetching Historical Timeseries (Daily resolution for reliability)
+                    // Using 'timeseries' endpoint which gives daily closing prices
+                    const chartRes = await fetch(`https://finnhub.io/api/v1/stock/candle?symbol=${ticker}&resolution=D&count=60&token=${FINNHUB_KEY}`);
                     const chartJson = await chartRes.json();
                     
                     if(chartJson.c && chartJson.c.length > 0) {
-                        const prices = chartJson.c; // Array of closes
+                        const prices = chartJson.c; 
                         const labels = chartJson.t.map((ts) => {
-                            const d = new Date(ts * 1000); // Finnhub time is in seconds
-                            return `${d.getHours()}:${d.getMinutes().toString().padStart(2, '0')}`;
+                            const d = new Date(ts * 1000); 
+                            return `${d.getMonth()+1}/${d.getDate()}`;
                         });
                         renderChart(labels, prices);
                     } else {
@@ -596,16 +716,19 @@
             // --- WATCHLIST MANAGEMENT ---
             window.toggleWatchlistCurrent = () => {
                 const t = currentStock;
-                const idx = watchlist.indexOf(t);
+                const activeListObj = watchlists.find(w => w.id === activeTab);
+                if(!activeListObj) return;
+
+                const idx = activeListObj.symbols.indexOf(t);
                 if (idx > -1) {
-                    watchlist.splice(idx, 1);
+                    activeListObj.symbols.push(t);
                 } else {
-                    watchlist.push(t);
+                    activeListObj.symbols.splice(idx, 1);
                 }
-                localStorage.setItem('sisko_watchlist', JSON.stringify(watchlist));
+                saveWatchlists();
                 
                 const star = document.getElementById('modal-star');
-                if(watchlist.includes(t)) {
+                if(activeListObj.symbols.includes(t)) {
                     star.classList.remove('fa-regular');
                     star.classList.add('fa-solid');
                     star.style.color = '#FEB019';
@@ -627,7 +750,7 @@
                 btn.classList.add('hidden');
                 loader.classList.remove('hidden');
 
-                const prompt = `Analyze stock ${currentStock}. Provide a concise summary of technical sentiment, key support/resistance levels based on recent volatility, and a short-term outlook. Keep it under 150 words for final answer.`;
+                const prompt = `Analyze stock ${currentStock}. Research the company fundamentals, technical indicators, and recent news. Provide a detailed breakdown including Pros, Cons, Support/Resistance levels, and a Short-Term Outlook. Keep the final answer under 200 words.`;
 
                 try {
                     const response = await fetch('https://api.deepseek.com/chat/completions', {
