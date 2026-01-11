@@ -8,10 +8,10 @@ exports.handler = async (event) => {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*'
       },
-      // CHANGED: Sending TWELVEDATA_KEY instead of POLYGON_KEY
+      // Sending FINNHUB_KEY
       body: JSON.stringify({
         DEEPSEEK_KEY: process.env.DEEPSEEK_KEY,
-        TWELVEDATA_KEY: process.env.TWELVEDATA_KEY
+        FINNHUB_KEY: process.env.FINNHUB_KEY
       })
     };
   } catch (error) {
