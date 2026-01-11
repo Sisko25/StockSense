@@ -1,34 +1,45 @@
 import yfinance as yf
 import json
+import os
 
 def handler(event, context):
-    # Get symbol from query params
-    # event.body contains JSON if POST, event.queryString contains URL params
-    params = event.get('queryStringParameters', {})
-    symbol = params.get('symbol', 'AAPL')
-
+    # Determine symbol from query param
+    # Netlify passes query params in event.queryStringParameters
     try:
+        # Try to parse query string
+        # Standard URL: ?symbol=AAPL
+        # Netlify Proxy: event.queryStringParameters
+        params = event.get('queryStringParameters', {})
+        
+        if 'symbol' not in params:
+            return {
+                'statusCode': 400,
+                'body': json.dumps({'error': 'Missing symbol parameter'})
+            }
+        
+        symbol = params['symbol'][0].upper() # Ensure uppercase
+
+        print(f"Fetching data for {symbol}...")
+
         ticker = yf.Ticker(symbol)
         
-        # Get History (for Graph) - Last 60 days
-        hist = ticker.history(period="2mo", interval="1d")
+        # Get History (for Graph) - Last 3 months (Daily data)
+        # Using 'period' instead of specific dates for speed
+        hist = ticker.history(period="3mo", interval="1d")
         
         # Format data for Chart.js
+        # We reverse it so the latest date is last (standard chart flow)
+        hist = hist.iloc[::-1]
+        
         dates = hist.index.strftime('%Y-%m-%d').tolist()
         closes = hist['Close'].tolist()
-
-        # Get Quote (for Price)
-        info = ticker.info
-        current_price = info.get('currentPrice') or 0
-        prev_close = hist['Close'].iloc[-2] if len(hist) > 1 else current_price
-        change = current_price - prev_close
-        pct_change = (change / prev_close) * 100 if prev_close != 0 else 0
-
+        opens = hist['Open'].tolist()
+        highs = hist['High'].tolist()
+        lows = hist['Low'].tolist()
+        
+        # Prepare response
         response_data = {
             "symbol": symbol,
-            "c": current_price,
-            "d": change,
-            "dp": pct_change,
             "chart": {
                 "labels": dates,
                 "data": closes
@@ -37,9 +48,15 @@ def handler(event, context):
 
         return {
             'statusCode': 200,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
             'body': json.dumps(response_data)
         }
+
     except Exception as e:
+        print(f"Error: {str(e)}")
         return {
             'statusCode': 500,
             'body': json.dumps({'error': str(e)})
