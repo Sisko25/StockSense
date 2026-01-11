@@ -262,384 +262,390 @@
         </div>
     </div>
 
-    <!-- 2. MAIN MODULE STARTS HERE -->
+    <!-- MAIN MODULE STARTS HERE -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
         import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-analytics.js";
         import { getAuth, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
 
-        // --- FETCH CONFIG FROM NETLIFY FUNCTION ---
-        let DEEPSEEK_KEY = "";
-        let POLYGON_KEY = "";
-
-        async function fetchConfig() {
-            try {
-                const res = await fetch('/.netlify/functions/get-config');
-                if(!res.ok) throw new Error("Failed to fetch config");
-                const data = await res.json();
-                DEEPSEEK_KEY = data.DEEPSEEK_KEY;
-                POLYGON_KEY = data.POLYGON_KEY;
-                return true;
-            } catch (e) {
-                console.error("Config Error:", e);
-                alert("Error loading configuration. Make sure you deployed the 'netlify/functions' folder.");
-                return false;
-            }
-        }
-
-        // --- APP INITIALIZATION ---
-        // We wait for config before initializing anything else
-        const hasConfig = await fetchConfig();
-        if (!hasConfig) return; // Stop if keys failed to load
-
-        // Firebase Config
-        const firebaseConfig = {
-            apiKey: "AIzaSyAaIpgze1gQ-vd3TI4fP5XWJlbzqzO-PXY",
-            authDomain: "siskoai.firebaseapp.com",
-            projectId: "siskoai",
-            storageBucket: "siskoai.firebasestorage.app",
-            messagingSenderId: "116282806208",
-            appId: "1:116282806208:web:fb11971fefe93d2f898225",
-            measurementId: "G-H8WGZ7P4HC"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-
-        // --- STATE ---
-        let currentStock = null;
-        let stockChartInstance = null;
-        let isSignup = false;
-        let watchlist = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'NVDA', 'META', 'NFLX']; 
-        
-        if(localStorage.getItem('sisko_watchlist')) {
-            watchlist = JSON.parse(localStorage.getItem('sisko_watchlist'));
-        }
-
-        // --- AUTHENTICATION LOGIC ---
-        const actionCodeSettings = {
-            url: window.location.href,
-            handleCodeInApp: true,
-        };
-
-        // 1. UI Toggle for Signup/Login
-        window.toggleAuthMode = () => {
-            isSignup = !isSignup;
-            const nameInput = document.getElementById('name-input');
-            const title = document.getElementById('auth-subtitle');
-            const btn = document.getElementById('auth-btn');
-            const toggle = document.getElementById('auth-toggle');
+        // --- WRAPPER FUNCTION TO HANDLE AWAIT AND RETURN ---
+        async function initApp() {
             
-            if (isSignup) {
-                nameInput.classList.remove('hidden');
-                title.innerText = "Create your account to start trading smarter.";
-                btn.innerText = "Send Sign Up Link";
-                toggle.innerHTML = 'Already have an account? <span onclick="toggleAuthMode()">Sign In</span>';
-            } else {
-                nameInput.classList.add('hidden');
-                title.innerText = "Sign in to access the intelligent screener.";
-                btn.innerText = "Send Magic Link";
-                toggle.innerHTML = 'New user? <span onclick="toggleAuthMode()">Create Account</span>';
-            }
-        }
+            // --- FETCH CONFIG FROM NETLIFY FUNCTION ---
+            let DEEPSEEK_KEY = "";
+            let POLYGON_KEY = "";
 
-        // 2. Handle Login Submit
-        document.getElementById('login-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('email-input').value;
-            const msg = document.getElementById('auth-msg');
+            async function fetchConfig() {
+                try {
+                    const res = await fetch('/.netlify/functions/get-config');
+                    if(!res.ok) throw new Error("Failed to fetch config");
+                    const data = await res.json();
+                    DEEPSEEK_KEY = data.DEEPSEEK_KEY;
+                    POLYGON_KEY = data.POLYGON_KEY;
+                    return true;
+                } catch (e) {
+                    console.error("Config Error:", e);
+                    alert("Error loading configuration. Make sure you deployed 'netlify/functions' folder with 'get-config.js'.");
+                    return false;
+                }
+            }
+
+            // Wait for config before starting
+            const hasConfig = await fetchConfig();
+            if (!hasConfig) return; // Safe to return now because we are inside a function
+
+            // Firebase Config
+            const firebaseConfig = {
+                apiKey: "AIzaSyAaIpgze1gQ-vd3TI4fP5XWJlbzqzO-PXY",
+                authDomain: "siskoai.firebaseapp.com",
+                projectId: "siskoai",
+                storageBucket: "siskoai.firebasestorage.app",
+                messagingSenderId: "116282806208",
+                appId: "1:116282806208:web:fb11971fefe93d2f898225",
+                measurementId: "G-H8WGZ7P4HC"
+            };
+
+            const app = initializeApp(firebaseConfig);
+            const auth = getAuth(app);
+
+            // --- STATE ---
+            let currentStock = null;
+            let stockChartInstance = null;
+            let isSignup = false;
+            let watchlist = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'NVDA', 'META', 'NFLX']; 
             
-            // CRITICAL CHECK: File Protocol Check
-            if (window.location.protocol === 'file:') {
-                alert("ERROR: You are opening this file directly from your folder.\n\nFirebase requires a server (http:// or https://). Please:\n1. Install VS Code.\n2. Install 'Live Server' extension.\n3. Right click this file and 'Open with Live Server'.");
-                msg.innerText = "Error: Invalid Protocol. See Alert.";
-                msg.style.color = "var(--down)";
-                return;
-            }
-            
-            // Save Name if signing up
-            if(isSignup) {
-                const name = document.getElementById('name-input').value;
-                if(name) localStorage.setItem('sisko_temp_name', name);
+            if(localStorage.getItem('sisko_watchlist')) {
+                watchlist = JSON.parse(localStorage.getItem('sisko_watchlist'));
             }
 
-            try {
-                await sendSignInLinkToEmail(auth, email, actionCodeSettings);
-                window.localStorage.setItem('emailForSignIn', email);
-                msg.innerText = "Magic link sent! Check your email.";
-                msg.style.color = "var(--up)";
-            } catch (error) {
-                msg.innerText = "Error: " + error.message;
-                msg.style.color = "var(--down)";
-            }
-        });
+            // --- AUTHENTICATION LOGIC ---
+            const actionCodeSettings = {
+                url: window.location.href,
+                handleCodeInApp: true,
+            };
 
-        // 3. Handle Link Arrival
-        if (isSignInWithEmailLink(auth, window.location.href)) {
-            let email = window.localStorage.getItem('emailForSignIn');
-            if (!email) {
-                email = window.prompt('Please provide your email for confirmation');
-            }
-            signInWithEmailLink(auth, email, window.location.href)
-                .then((result) => {
-                    window.localStorage.removeItem('emailForSignIn');
-                    // Set display name if it was saved
-                    const tempName = localStorage.getItem('sisko_temp_name');
-                    if(tempName) {
-                        // Update profile (optional, but good for UX)
-                        // await updateProfile(result.user, { displayName: tempName }); 
-                        localStorage.removeItem('sisko_temp_name');
-                    }
-                    window.location.href = window.location.pathname; // Clean URL
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
-        }
-
-        // 4. Auth State Observer
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                document.getElementById('auth-view').classList.add('hidden');
-                document.getElementById('app-view').classList.remove('hidden');
+            // 1. UI Toggle for Signup/Login
+            window.toggleAuthMode = () => {
+                isSignup = !isSignup;
+                const nameInput = document.getElementById('name-input');
+                const title = document.getElementById('auth-subtitle');
+                const btn = document.getElementById('auth-btn');
+                const toggle = document.getElementById('auth-toggle');
                 
-                // Use DisplayName if available, otherwise email prefix
-                const displayName = user.displayName || user.email.split('@')[0];
-                document.getElementById('user-badge').innerText = displayName;
-                
-                loadMarketData(); 
-            } else {
-                document.getElementById('auth-view').classList.remove('hidden');
-                document.getElementById('app-view').classList.add('hidden');
-            }
-        });
-
-        // --- MARKET DATA (POLYGON) ---
-        window.loadMarketData = async () => {
-            const listEl = document.getElementById('stock-list');
-            listEl.innerHTML = '<div class="spinner"></div>';
-
-            let tickersToFetch = watchlist;
-            let mode = 'watchlist';
-            
-            const activeTab = document.querySelector('.tab.active').innerText;
-            if (activeTab === 'Market Movers') {
-                mode = 'market';
-            }
-
-            try {
-                let data = [];
-                if (mode === 'market') {
-                    const res = await fetch(`https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers?apiKey=${POLYGON_KEY}`);
-                    const json = await res.json();
-                    // Sort by change % descending (Gainers)
-                    data = json.tickers
-                        .filter(t => t.ticker.length < 5) 
-                        .sort((a, b) => b.todaysChangePerc - a.todaysChangePerc)
-                        .slice(0, 20);
+                if (isSignup) {
+                    nameInput.classList.remove('hidden');
+                    title.innerText = "Create your account to start trading smarter.";
+                    btn.innerText = "Send Sign Up Link";
+                    toggle.innerHTML = 'Already have an account? <span onclick="toggleAuthMode()">Sign In</span>';
                 } else {
-                    const res = await fetch(`https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers?tickers=${watchlist.join(',')}&apiKey=${POLYGON_KEY}`);
-                    const json = await res.json();
-                    data = json.tickers;
+                    nameInput.classList.add('hidden');
+                    title.innerText = "Sign in to access the intelligent screener.";
+                    btn.innerText = "Send Magic Link";
+                    toggle.innerHTML = 'New user? <span onclick="toggleAuthMode()">Create Account</span>';
+                }
+            }
+
+            // 2. Handle Login Submit
+            document.getElementById('login-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const email = document.getElementById('email-input').value;
+                const msg = document.getElementById('auth-msg');
+                
+                // CRITICAL CHECK: File Protocol Check
+                if (window.location.protocol === 'file:') {
+                    alert("ERROR: You are opening this file directly from your folder.\n\nFirebase requires a server (http:// or https://). Please:\n1. Install VS Code.\n2. Install 'Live Server' extension.\n3. Right click this file and 'Open with Live Server'.");
+                    msg.innerText = "Error: Invalid Protocol. See Alert.";
+                    msg.style.color = "var(--down)";
+                    return;
+                }
+                
+                // Save Name if signing up
+                if(isSignup) {
+                    const name = document.getElementById('name-input').value;
+                    if(name) localStorage.setItem('sisko_temp_name', name);
                 }
 
-                renderList(data);
-
-            } catch (err) {
-                console.error("Polygon Error", err);
-                listEl.innerHTML = `<div style="padding:20px; text-align:center; color:var(--down)">Error loading data.</div>`;
-            }
-        };
-
-        function renderList(stocks) {
-            const listEl = document.getElementById('stock-list');
-            listEl.innerHTML = '';
-            
-            stocks.forEach(stock => {
-                const price = stock.day.c || stock.lastQuote?.p || 0;
-                const change = stock.todaysChange;
-                const changeP = stock.todaysChangePerc;
-                const colorClass = change >= 0 ? 'text-up' : 'text-down';
-                const sign = change >= 0 ? '+' : '';
-
-                const row = document.createElement('div');
-                row.className = 'stock-row';
-                row.innerHTML = `
-                    <div>
-                        <div class="symbol">${stock.ticker}</div>
-                        <div style="font-size:0.75rem; color:var(--text-muted)">${stock.name}</div>
-                    </div>
-                    <div class="price">${price.toFixed(2)}</div>
-                    <div class="change ${colorClass}">${sign}${change.toFixed(2)} (${changeP.toFixed(2)}%)</div>
-                    <div class="actions"><i class="fa-solid fa-chevron-right"></i></div>
-                `;
-                row.onclick = () => openStockDetail(stock.ticker);
-                listEl.appendChild(row);
-            });
-        }
-
-        window.switchTab = (tabName) => {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            event.target.classList.add('active');
-            loadMarketData();
-        }
-
-        // --- STOCK DETAILS & CHART ---
-        window.openStockDetail = async (ticker) => {
-            currentStock = ticker;
-            document.getElementById('modal-symbol').innerText = ticker;
-            document.getElementById('modal').classList.add('open');
-            
-            // Reset AI
-            document.getElementById('ai-content').classList.add('hidden');
-            document.getElementById('analyze-btn').classList.remove('hidden');
-            document.getElementById('ai-loader').classList.add('hidden');
-
-            const star = document.getElementById('modal-star');
-            if(watchlist.includes(ticker)) {
-                star.classList.remove('fa-regular');
-                star.classList.add('fa-solid');
-                star.style.color = '#FEB019';
-            } else {
-                star.classList.remove('fa-solid');
-                star.classList.add('fa-regular');
-                star.style.color = 'var(--text)';
-            }
-
-            const endDate = new Date().toISOString().split('T')[0];
-            const startDate = endDate; 
-
-            try {
-                const res = await fetch(`https://api.polygon.io/v2/aggs/ticker/${ticker}/range/5/minute/${startDate}/${endDate}?adjusted=true&sort=asc&apiKey=${POLYGON_KEY}`);
-                const json = await res.json();
-                
-                if(json.results && json.results.length > 0) {
-                    const prices = json.results.map(r => r.c); 
-                    const labels = json.results.map(r => {
-                        const d = new Date(r.t);
-                        return `${d.getHours()}:${d.getMinutes().toString().padStart(2, '0')}`;
-                    });
-                    const currentP = prices[prices.length - 1];
-                    document.getElementById('modal-price').innerText = currentP.toFixed(2);
-                    renderChart(labels, prices);
-                } else {
-                     // Fallback if no intraday data
-                     document.getElementById('modal-price').innerText = "Market Closed";
-                }
-            } catch (e) {
-                console.error(e);
-            }
-        };
-
-        window.closeModal = () => {
-            document.getElementById('modal').classList.remove('open');
-            if(stockChartInstance) stockChartInstance.destroy();
-        };
-
-        function renderChart(labels, data) {
-            const ctx = document.getElementById('stockChart').getContext('2d');
-            let gradient = ctx.createLinearGradient(0, 0, 0, 300);
-            gradient.addColorStop(0, 'rgba(41, 98, 255, 0.2)');
-            gradient.addColorStop(1, 'rgba(41, 98, 255, 0)');
-
-            if(stockChartInstance) stockChartInstance.destroy();
-
-            stockChartInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Price',
-                        data: data,
-                        borderColor: '#2962FF',
-                        backgroundColor: gradient,
-                        borderWidth: 2,
-                        fill: true,
-                        pointRadius: 0,
-                        tension: 0.1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { display: false },
-                        y: { position: 'right', grid: { color: '#2A2E39' } }
-                    }
+                try {
+                    await sendSignInLinkToEmail(auth, email, actionCodeSettings);
+                    window.localStorage.setItem('emailForSignIn', email);
+                    msg.innerText = "Magic link sent! Check your email.";
+                    msg.style.color = "var(--up)";
+                } catch (error) {
+                    msg.innerText = "Error: " + error.message;
+                    msg.style.color = "var(--down)";
                 }
             });
-        }
 
-        // --- WATCHLIST MANAGEMENT ---
-        window.toggleWatchlistCurrent = () => {
-            const t = currentStock;
-            const idx = watchlist.indexOf(t);
-            if (idx > -1) {
-                watchlist.splice(idx, 1);
-            } else {
-                watchlist.push(t);
-            }
-            localStorage.setItem('sisko_watchlist', JSON.stringify(watchlist));
-            
-            const star = document.getElementById('modal-star');
-            if(watchlist.includes(t)) {
-                star.classList.remove('fa-regular');
-                star.classList.add('fa-solid');
-                star.style.color = '#FEB019';
-            } else {
-                star.classList.remove('fa-solid');
-                star.classList.add('fa-regular');
-                star.style.color = 'var(--text)';
-            }
-        };
-
-        // --- DEEPSEEK AI REASONER INTEGRATION ---
-        window.runAIAnalysis = async () => {
-            if(!currentStock) return;
-
-            const btn = document.getElementById('analyze-btn');
-            const loader = document.getElementById('ai-loader');
-            const content = document.getElementById('ai-content');
-            
-            btn.classList.add('hidden');
-            loader.classList.remove('hidden');
-
-            const prompt = `Analyze stock ${currentStock}. Provide a concise summary of technical sentiment, key support/resistance levels based on recent volatility, and a short-term outlook. Keep it under 150 words for the final answer.`;
-
-            try {
-                const response = await fetch('https://api.deepseek.com/chat/completions', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${DEEPSEEK_KEY}`
-                    },
-                    body: JSON.stringify({
-                        model: "deepseek-reasoner",
-                        messages: [
-                            { role: "system", content: "You are an expert financial analyst at Sisko Capital." },
-                            { role: "user", content: prompt }
-                        ],
+            // 3. Handle Link Arrival
+            if (isSignInWithEmailLink(auth, window.location.href)) {
+                let email = window.localStorage.getItem('emailForSignIn');
+                if (!email) {
+                    email = window.prompt('Please provide your email for confirmation');
+                }
+                signInWithEmailLink(auth, email, window.location.href)
+                    .then((result) => {
+                        window.localStorage.removeItem('emailForSignIn');
+                        // Set display name if it was saved
+                        const tempName = localStorage.getItem('sisko_temp_name');
+                        if(tempName) {
+                            // Update profile (optional, but good for UX)
+                            // await updateProfile(result.user, { displayName: tempName }); 
+                            localStorage.removeItem('sisko_temp_name');
+                        }
+                        window.location.href = window.location.pathname; // Clean URL
                     })
-                });
+                    .catch((error) => {
+                        console.error(error);
+                    });
+            }
 
-                const data = await response.json();
+            // 4. Auth State Observer
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    document.getElementById('auth-view').classList.add('hidden');
+                    document.getElementById('app-view').classList.remove('hidden');
+                    
+                    // Use DisplayName if available, otherwise email prefix
+                    const displayName = user.displayName || user.email.split('@')[0];
+                    document.getElementById('user-badge').innerText = displayName;
+                    
+                    loadMarketData(); 
+                } else {
+                    document.getElementById('auth-view').classList.remove('hidden');
+                    document.getElementById('app-view').classList.add('hidden');
+                }
+            });
+
+            // --- MARKET DATA (POLYGON) ---
+            window.loadMarketData = async () => {
+                const listEl = document.getElementById('stock-list');
+                listEl.innerHTML = '<div class="spinner"></div>';
+
+                let tickersToFetch = watchlist;
+                let mode = 'watchlist';
                 
-                loader.classList.add('hidden');
-                content.classList.remove('hidden');
+                const activeTab = document.querySelector('.tab.active').innerText;
+                if (activeTab === 'Market Movers') {
+                    mode = 'market';
+                }
 
-                const reasoning = data.choices[0].message.reasoning_content || "Thinking process not exposed.";
-                const finalAnswer = data.choices[0].message.content;
+                try {
+                    let data = [];
+                    if (mode === 'market') {
+                        const res = await fetch(`https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers?apiKey=${POLYGON_KEY}`);
+                        const json = await res.json();
+                        // Sort by change % descending (Gainers)
+                        data = json.tickers
+                            .filter(t => t.ticker.length < 5) 
+                            .sort((a, b) => b.todaysChangePerc - a.todaysChangePerc)
+                            .slice(0, 20);
+                    } else {
+                        const res = await fetch(`https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers?tickers=${watchlist.join(',')}&apiKey=${POLYGON_KEY}`);
+                        const json = await res.json();
+                        data = json.tickers;
+                    }
 
-                document.getElementById('thinking-text').innerText = reasoning;
-                document.getElementById('final-text').innerHTML = finalAnswer.replace(/\n/g, '<br>');
+                    renderList(data);
 
-            } catch (error) {
-                loader.classList.add('hidden');
-                btn.classList.remove('hidden');
-                alert("AI Error: " + error.message);
+                } catch (err) {
+                    console.error("Polygon Error", err);
+                    listEl.innerHTML = `<div style="padding:20px; text-align:center; color:var(--down)">Error loading data.</div>`;
+                }
+            };
+
+            function renderList(stocks) {
+                const listEl = document.getElementById('stock-list');
+                listEl.innerHTML = '';
+                
+                stocks.forEach(stock => {
+                    const price = stock.day.c || stock.lastQuote?.p || 0;
+                    const change = stock.todaysChange;
+                    const changeP = stock.todaysChangePerc;
+                    const colorClass = change >= 0 ? 'text-up' : 'text-down';
+                    const sign = change >= 0 ? '+' : '';
+
+                    const row = document.createElement('div');
+                    row.className = 'stock-row';
+                    row.innerHTML = `
+                        <div>
+                            <div class="symbol">${stock.ticker}</div>
+                            <div style="font-size:0.75rem; color:var(--text-muted)">${stock.name}</div>
+                        </div>
+                        <div class="price">${price.toFixed(2)}</div>
+                        <div class="change ${colorClass}">${sign}${change.toFixed(2)} (${changeP.toFixed(2)}%)</div>
+                        <div class="actions"><i class="fa-solid fa-chevron-right"></i></div>
+                    `;
+                    row.onclick = () => openStockDetail(stock.ticker);
+                    listEl.appendChild(row);
+                });
+            }
+
+            window.switchTab = (tabName) => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                event.target.classList.add('active');
+                loadMarketData();
+            }
+
+            // --- STOCK DETAILS & CHART ---
+            window.openStockDetail = async (ticker) => {
+                currentStock = ticker;
+                document.getElementById('modal-symbol').innerText = ticker;
+                document.getElementById('modal').classList.add('open');
+                
+                // Reset AI
+                document.getElementById('ai-content').classList.add('hidden');
+                document.getElementById('analyze-btn').classList.remove('hidden');
+                document.getElementById('ai-loader').classList.add('hidden');
+
+                const star = document.getElementById('modal-star');
+                if(watchlist.includes(ticker)) {
+                    star.classList.remove('fa-regular');
+                    star.classList.add('fa-solid');
+                    star.style.color = '#FEB019';
+                } else {
+                    star.classList.remove('fa-solid');
+                    star.classList.add('fa-regular');
+                    star.style.color = 'var(--text)';
+                }
+
+                const endDate = new Date().toISOString().split('T')[0];
+                const startDate = endDate; 
+
+                try {
+                    const res = await fetch(`https://api.polygon.io/v2/aggs/ticker/${ticker}/range/5/minute/${startDate}/${endDate}?adjusted=true&sort=asc&apiKey=${POLYGON_KEY}`);
+                    const json = await res.json();
+                    
+                    if(json.results && json.results.length > 0) {
+                        const prices = json.results.map(r => r.c); 
+                        const labels = json.results.map(r => {
+                            const d = new Date(r.t);
+                            return `${d.getHours()}:${d.getMinutes().toString().padStart(2, '0')}`;
+                        });
+                        const currentP = prices[prices.length - 1];
+                        document.getElementById('modal-price').innerText = currentP.toFixed(2);
+                        renderChart(labels, prices);
+                    } else {
+                         // Fallback if no intraday data
+                         document.getElementById('modal-price').innerText = "Market Closed";
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
+            };
+
+            window.closeModal = () => {
+                document.getElementById('modal').classList.remove('open');
+                if(stockChartInstance) stockChartInstance.destroy();
+            };
+
+            function renderChart(labels, data) {
+                const ctx = document.getElementById('stockChart').getContext('2d');
+                let gradient = ctx.createLinearGradient(0, 0, 0, 300);
+                gradient.addColorStop(0, 'rgba(41, 98, 255, 0.2)');
+                gradient.addColorStop(1, 'rgba(41, 98, 255, 0)');
+
+                if(stockChartInstance) stockChartInstance.destroy();
+
+                stockChartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Price',
+                            data: data,
+                            borderColor: '#2962FF',
+                            backgroundColor: gradient,
+                            borderWidth: 2,
+                            fill: true,
+                            pointRadius: 0,
+                            tension: 0.1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { display: false },
+                            y: { position: 'right', grid: { color: '#2A2E39' } }
+                        }
+                    }
+                });
+            }
+
+            // --- WATCHLIST MANAGEMENT ---
+            window.toggleWatchlistCurrent = () => {
+                const t = currentStock;
+                const idx = watchlist.indexOf(t);
+                if (idx > -1) {
+                    watchlist.splice(idx, 1);
+                } else {
+                    watchlist.push(t);
+                }
+                localStorage.setItem('sisko_watchlist', JSON.stringify(watchlist));
+                
+                const star = document.getElementById('modal-star');
+                if(watchlist.includes(t)) {
+                    star.classList.remove('fa-regular');
+                    star.classList.add('fa-solid');
+                    star.style.color = '#FEB019';
+                } else {
+                    star.classList.remove('fa-solid');
+                    star.classList.add('fa-regular');
+                    star.style.color = 'var(--text)';
+                }
+            };
+
+            // --- DEEPSEEK AI REASONER INTEGRATION ---
+            window.runAIAnalysis = async () => {
+                if(!currentStock) return;
+
+                const btn = document.getElementById('analyze-btn');
+                const loader = document.getElementById('ai-loader');
+                const content = document.getElementById('ai-content');
+                
+                btn.classList.add('hidden');
+                loader.classList.remove('hidden');
+
+                const prompt = `Analyze stock ${currentStock}. Provide a concise summary of technical sentiment, key support/resistance levels based on recent volatility, and a short-term outlook. Keep it under 150 words for the final answer.`;
+
+                try {
+                    const response = await fetch('https://api.deepseek.com/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${DEEPSEEK_KEY}`
+                        },
+                        body: JSON.stringify({
+                            model: "deepseek-reasoner",
+                            messages: [
+                                { role: "system", content: "You are an expert financial analyst at Sisko Capital." },
+                                { role: "user", content: prompt }
+                            ],
+                        })
+                    });
+
+                    const data = await response.json();
+                    
+                    loader.classList.add('hidden');
+                    content.classList.remove('hidden');
+
+                    const reasoning = data.choices[0].message.reasoning_content || "Thinking process not exposed.";
+                    const finalAnswer = data.choices[0].message.content;
+
+                    document.getElementById('thinking-text').innerText = reasoning;
+                    document.getElementById('final-text').innerHTML = finalAnswer.replace(/\n/g, '<br>');
+
+                } catch (error) {
+                    loader.classList.add('hidden');
+                    btn.classList.remove('hidden');
+                    alert("AI Error: " + error.message);
+                }
             }
         }
+
+        // Start the app
+        initApp();
 
     </script>
 </body>
