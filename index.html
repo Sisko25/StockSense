@@ -101,7 +101,7 @@
 
         /* --- Screener Table --- */
         .stock-row {
-            display: grid; grid-template-columns: 1.5fr 1fr 1fr 0.5fr;
+            display: grid; grid-template-columns:1.5fr 1fr 1fr 0.5fr;
             padding: 12px 15px; border-bottom: 1px solid var(--border);
             align-items: center; cursor: pointer; transition: background 0.2s;
         }
@@ -176,9 +176,7 @@
             <p style="color: var(--text-muted); margin-bottom: 20px;" id="auth-subtitle">Sign in to access Sisko StockSense.</p>
             
             <form id="login-form">
-                <!-- Name field hidden for Login, shown for Signup -->
                 <input type="text" id="name-input" class="auth-input hidden" placeholder="Full Name">
-                
                 <input type="email" id="email-input" class="auth-input" placeholder="Enter your email" required>
                 <button type="submit" class="btn btn-primary w-full" id="auth-btn">Send Magic Link</button>
             </form>
@@ -280,12 +278,21 @@
                     const res = await fetch('/.netlify/functions/get-config');
                     if(!res.ok) throw new Error("Failed to fetch config");
                     const data = await res.json();
+                    
+                    // Debugging: Log to console to check what we got
+                    console.log("Config Data:", data);
+
                     DEEPSEEK_KEY = data.DEEPSEEK_KEY;
-                    TWELVEDATA_KEY = data.TWELVEDATA_KEY; // Updated to TWELVEDATA
+                    TWELVEDATA_KEY = data.TWELVEDATA_KEY;
+                    
+                    if (!TWELVEDATA_KEY) {
+                        alert("Error: TWELVEDATA_KEY is missing from Netlify Environment Variables.");
+                        return false;
+                    }
                     return true;
                 } catch (e) {
                     console.error("Config Error:", e);
-                    alert("Error loading configuration. Make sure you updated Netlify variables to include TWELVEDATA_KEY.");
+                    alert("Error loading configuration. Make sure you updated get-config.js and deployed it.");
                     return false;
                 }
             }
@@ -324,7 +331,6 @@
                 handleCodeInApp: true,
             };
 
-            // 1. UI Toggle for Signup/Login
             window.toggleAuthMode = () => {
                 isSignup = !isSignup;
                 const nameInput = document.getElementById('name-input');
@@ -345,21 +351,18 @@
                 }
             }
 
-            // 2. Handle Login Submit
             document.getElementById('login-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const email = document.getElementById('email-input').value;
                 const msg = document.getElementById('auth-msg');
                 
-                // CRITICAL CHECK: File Protocol Check
                 if (window.location.protocol === 'file:') {
-                    alert("ERROR: You are opening this file directly from your folder.\n\nFirebase requires a server (http:// or https://). Please:\n1. Install VS Code.\n2. Install 'Live Server' extension.\n3. Right click this file and 'Open with Live Server'.");
-                    msg.innerText = "Error: Invalid Protocol. See Alert.";
+                    alert("ERROR: You are opening this file directly from your folder.\n\nFirebase requires a server (http:// or https://).");
+                    msg.innerText = "Error: Invalid Protocol.";
                     msg.style.color = "var(--down)";
                     return;
                 }
                 
-                // Save Name if signing up
                 if(isSignup) {
                     const name = document.getElementById('name-input').value;
                     if(name) localStorage.setItem('sisko_temp_name', name);
@@ -376,7 +379,6 @@
                 }
             });
 
-            // 3. Handle Link Arrival
             if (isSignInWithEmailLink(auth, window.location.href)) {
                 let email = window.localStorage.getItem('emailForSignIn');
                 if (!email) {
@@ -385,27 +387,22 @@
                 signInWithEmailLink(auth, email, window.location.href)
                     .then((result) => {
                         window.localStorage.removeItem('emailForSignIn');
-                        // Set display name if it was saved
                         const tempName = localStorage.getItem('sisko_temp_name');
                         if(tempName) {
-                            // Update profile (optional, but good for UX)
-                            // await updateProfile(result.user, { displayName: tempName }); 
                             localStorage.removeItem('sisko_temp_name');
                         }
-                        window.location.href = window.location.pathname; // Clean URL
+                        window.location.href = window.location.pathname; 
                     })
                     .catch((error) => {
                         console.error(error);
                     });
             }
 
-            // 4. Auth State Observer
             onAuthStateChanged(auth, (user) => {
                 if (user) {
                     document.getElementById('auth-view').classList.add('hidden');
                     document.getElementById('app-view').classList.remove('hidden');
                     
-                    // Use DisplayName if available, otherwise email prefix
                     const displayName = user.displayName || user.email.split('@')[0];
                     document.getElementById('user-badge').innerText = displayName;
                     
@@ -432,26 +429,28 @@
                     if (mode === 'market') {
                         // Fetch Market Movers
                         const res = await fetch(`https://api.twelvedata.com/market_movers?market=stocks&outputsize=10&apikey=${TWELVEDATA_KEY}`);
+                        if(!res.ok) throw new Error("Market Movers API Failed");
                         const json = await res.json();
                         data = json.data || [];
                     } else {
-                        // Fetch Watchlist (Note: This loops through the watchlist. 
-                        // In production, use a backend to cache this to save API credits)
-                        // Limiting to first 5 to save credits for this demo
+                        // Fetch Watchlist
                         const limitedWatchlist = watchlist.slice(0, 5); 
                         const promises = limitedWatchlist.map(async (ticker) => {
                             const res = await fetch(`https://api.twelvedata.com/quote?symbol=${ticker}&apikey=${TWELVEDATA_KEY}`);
+                            if(!res.ok) return null; // Graceful failure
                             const json = await res.json();
-                            return json; // Returns { symbol, price, change_percentage, etc }
+                            return json; 
                         });
                         data = await Promise.all(promises);
+                        // Filter out nulls (failed requests)
+                        data = data.filter(item => item !== null);
                     }
 
                     renderList(data);
 
                 } catch (err) {
                     console.error("Twelve Data Error", err);
-                    listEl.innerHTML = `<div style="padding:20px; text-align:center; color:var(--down)">Error loading data. (Check Credits/Key)</div>`;
+                    listEl.innerHTML = `<div style="padding:20px; text-align:center; color:var(--down)">Error loading data. (Check API Key/Credits)</div>`;
                 }
             };
 
@@ -459,18 +458,19 @@
                 const listEl = document.getElementById('stock-list');
                 listEl.innerHTML = '';
                 
+                if(!stocks || stocks.length === 0) {
+                    listEl.innerHTML = `<div style="padding:20px; text-align:center; color:var(--text-muted)">No data available.</div>`;
+                    return;
+                }
+                
                 stocks.forEach(stock => {
-                    // Twelve Data structure
-                    const symbol = stock.symbol;
-                    const price = stock.price;
-                    // Twelve Data returns "change_percentage" (e.g. "1.25%") sometimes, sometimes as float
-                    // Let's parse it safely
-                    let changeP = 0;
-                    if (typeof stock.change_percentage === 'string') {
-                        changeP = parseFloat(stock.change_percentage.replace('%',''));
-                    } else {
-                        changeP = stock.change_percentage || 0;
-                    }
+                    // Safety Checks for data
+                    const symbol = stock.symbol || "N/A";
+                    const price = parseFloat(stock.price);
+                    const changeP = parseFloat(stock.change_percentage || 0);
+
+                    // Skip if price is NaN
+                    if(isNaN(price)) return;
 
                     const colorClass = changeP >= 0 ? 'text-up' : 'text-down';
                     const sign = changeP >= 0 ? '+' : '';
@@ -503,7 +503,6 @@
                 document.getElementById('modal-symbol').innerText = ticker;
                 document.getElementById('modal').classList.add('open');
                 
-                // Reset AI
                 document.getElementById('ai-content').classList.add('hidden');
                 document.getElementById('analyze-btn').classList.remove('hidden');
                 document.getElementById('ai-loader').classList.add('hidden');
@@ -520,8 +519,8 @@
                 }
 
                 try {
-                    // Fetch Time Series (Intraday 1 min)
                     const res = await fetch(`https://api.twelvedata.com/time_series?symbol=${ticker}&interval=1min&outputsize=50&apikey=${TWELVEDATA_KEY}`);
+                    if(!res.ok) throw new Error("Time Series API Failed");
                     const json = await res.json();
                     
                     if(json.values && json.values.length > 0) {
@@ -534,11 +533,11 @@
                         document.getElementById('modal-price').innerText = currentP.toFixed(2);
                         renderChart(labels, prices);
                     } else {
-                         // Fallback if no intraday data
                          document.getElementById('modal-price').innerText = "No Intraday Data";
                     }
                 } catch (e) {
                     console.error(e);
+                    document.getElementById('modal-price').innerText = "Data Error";
                 }
             };
 
