@@ -205,10 +205,7 @@
         </div>
 
         <main id="screener-content">
-            <!-- Screener Loader -->
             <div id="screener-loader" class="spinner"></div>
-            
-            <!-- Screener Rows will be injected here -->
             <div id="stock-list"></div>
         </main>
 
@@ -271,7 +268,7 @@
             
             // --- FETCH CONFIG FROM NETLIFY FUNCTION ---
             let DEEPSEEK_KEY = "";
-            let TWELVEDATA_KEY = "";
+            let FINNHUB_KEY = "";
 
             async function fetchConfig() {
                 try {
@@ -279,14 +276,13 @@
                     if(!res.ok) throw new Error("Failed to fetch config");
                     const data = await res.json();
                     
-                    // Debugging: Log to console to check what we got
                     console.log("Config Data:", data);
 
                     DEEPSEEK_KEY = data.DEEPSEEK_KEY;
-                    TWELVEDATA_KEY = data.TWELVEDATA_KEY;
+                    FINNHUB_KEY = data.FINNHUB_KEY;
                     
-                    if (!TWELVEDATA_KEY) {
-                        alert("Error: TWELVEDATA_KEY is missing from Netlify Environment Variables.");
+                    if (!FINNHUB_KEY) {
+                        alert("Error: FINNHUB_KEY is missing from Netlify Environment Variables.");
                         return false;
                     }
                     return true;
@@ -297,7 +293,6 @@
                 }
             }
 
-            // Wait for config before starting
             const hasConfig = await fetchConfig();
             if (!hasConfig) return; 
 
@@ -324,6 +319,9 @@
             if(localStorage.getItem('sisko_watchlist')) {
                 watchlist = JSON.parse(localStorage.getItem('sisko_watchlist'));
             }
+
+            // Predefined list of high-volume stocks to generate "Market Movers"
+            const marketMoversList = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'TSLA', 'META', 'NFLX', 'AMD', 'INTC', 'CSCO', 'ADBE', 'CRM', 'ORCL', 'IBM', 'JNJ', 'V', 'WMT', 'DIS', 'NFLX'];
 
             // --- AUTHENTICATION LOGIC ---
             const actionCodeSettings = {
@@ -413,7 +411,7 @@
                 }
             });
 
-            // --- MARKET DATA (TWELVE DATA) ---
+            // --- MARKET DATA (FINNHUB) ---
             window.loadMarketData = async () => {
                 const listEl = document.getElementById('stock-list');
                 listEl.innerHTML = '<div class="spinner"></div>';
@@ -426,30 +424,41 @@
 
                 try {
                     let data = [];
-                    if (mode === 'market') {
-                        // Fetch Market Movers
-                        const res = await fetch(`https://api.twelvedata.com/market_movers?market=stocks&outputsize=10&apikey=${TWELVEDATA_KEY}`);
-                        if(!res.ok) throw new Error("Market Movers API Failed");
-                        const json = await res.json();
-                        data = json.data || [];
-                    } else {
-                        // Fetch Watchlist
-                        const limitedWatchlist = watchlist.slice(0, 5); 
-                        const promises = limitedWatchlist.map(async (ticker) => {
-                            const res = await fetch(`https://api.twelvedata.com/quote?symbol=${ticker}&apikey=${TWELVEDATA_KEY}`);
-                            if(!res.ok) return null; // Graceful failure
+                    
+                    // Finnhub requires individual requests for quotes (no batch endpoint in free tier)
+                    // We fetch a batch of stocks and sort them to simulate "Movers"
+                    
+                    const fetchList = mode === 'market' ? marketMoversList : watchlist;
+                    const limitedList = fetchList.slice(0, 20); // Limit to 20 to save calls/time
+
+                    const promises = limitedList.map(async (ticker) => {
+                        try {
+                            const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${FINNHUB_KEY}`);
+                            if(!res.ok) return null;
                             const json = await res.json();
-                            return json; 
-                        });
-                        data = await Promise.all(promises);
-                        // Filter out nulls (failed requests)
-                        data = data.filter(item => item !== null);
+                            // Finnhub returns { c: price, d: change, dp: percent_change, ... }
+                            // Add symbol manually since Finnhub quote doesn't always return it in JSON body
+                            return { ...json, symbol: ticker };
+                        } catch (e) {
+                            return null;
+                        }
+                    });
+
+                    const results = await Promise.all(promises);
+                    // Filter out failures
+                    data = results.filter(item => item !== null && item.c !== 0);
+
+                    if (mode === 'market') {
+                        // Sort by percentage change descending (Gainers)
+                        data.sort((a, b) => b.dp - a.dp);
+                        // Take top 10
+                        data = data.slice(0, 20);
                     }
 
                     renderList(data);
 
                 } catch (err) {
-                    console.error("Twelve Data Error", err);
+                    console.error("Finnhub Error", err);
                     listEl.innerHTML = `<div style="padding:20px; text-align:center; color:var(--down)">Error loading data. (Check API Key/Credits)</div>`;
                 }
             };
@@ -464,13 +473,11 @@
                 }
                 
                 stocks.forEach(stock => {
-                    // Safety Checks for data
-                    const symbol = stock.symbol || "N/A";
-                    const price = parseFloat(stock.price);
-                    const changeP = parseFloat(stock.change_percentage || 0);
-
-                    // Skip if price is NaN
-                    if(isNaN(price)) return;
+                    const symbol = stock.symbol;
+                    const price = parseFloat(stock.c);
+                    // Finnhub 'dp' is percentage change (e.g. 1.25 means 1.25%)
+                    const changeP = parseFloat(stock.dp);
+                    const changeAbs = parseFloat(stock.d);
 
                     const colorClass = changeP >= 0 ? 'text-up' : 'text-down';
                     const sign = changeP >= 0 ? '+' : '';
@@ -497,7 +504,7 @@
                 loadMarketData();
             }
 
-            // --- STOCK DETAILS & CHART (TWELVE DATA) ---
+            // --- STOCK DETAILS & CHART (FINNHUB) ---
             window.openStockDetail = async (ticker) => {
                 currentStock = ticker;
                 document.getElementById('modal-symbol').innerText = ticker;
@@ -519,25 +526,30 @@
                 }
 
                 try {
-                    const res = await fetch(`https://api.twelvedata.com/time_series?symbol=${ticker}&interval=1min&outputsize=50&apikey=${TWELVEDATA_KEY}`);
-                    if(!res.ok) throw new Error("Time Series API Failed");
-                    const json = await res.json();
+                    // Get current to latest price
+                    const quoteRes = await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${FINNHUB_KEY}`);
+                    const quoteJson = await quoteRes.json();
+                    if (quoteJson.c) {
+                         document.getElementById('modal-price').innerText = quoteJson.c.toFixed(2);
+                    }
+
+                    // Get Intraday Chart (Candles)
+                    // resolution=1 is 1 minute
+                    const chartRes = await fetch(`https://finnhub.io/api/v1/stock/candle?symbol=${ticker}&resolution=1&count=50&token=${FINNHUB_KEY}`);
+                    const chartJson = await chartRes.json();
                     
-                    if(json.values && json.values.length > 0) {
-                        const prices = json.values.map(v => parseFloat(v.close)); 
-                        const labels = json.values.map(v => {
-                            const d = new Date(v.datetime);
+                    if(chartJson.c && chartJson.c.length > 0) {
+                        const prices = chartJson.c; // Array of closes
+                        const labels = chartJson.t.map((ts) => {
+                            const d = new Date(ts * 1000); // Finnhub time is in seconds
                             return `${d.getHours()}:${d.getMinutes().toString().padStart(2, '0')}`;
                         });
-                        const currentP = prices[prices.length - 1];
-                        document.getElementById('modal-price').innerText = currentP.toFixed(2);
                         renderChart(labels, prices);
                     } else {
-                         document.getElementById('modal-price').innerText = "No Intraday Data";
+                         document.getElementById('modal-price').innerText = quoteJson.c ? quoteJson.c.toFixed(2) : "No Data";
                     }
                 } catch (e) {
                     console.error(e);
-                    document.getElementById('modal-price').innerText = "Data Error";
                 }
             };
 
